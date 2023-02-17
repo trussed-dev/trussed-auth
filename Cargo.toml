@@ -11,6 +11,7 @@ license = "Apache-2.0 OR MIT"
 description = "Authentication extension and backend for Trussed"
 
 [dependencies]
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["reduced-round"] }
 hkdf = "0.12.3"
 hmac = "0.12.1"
 rand_core = "0.6.4"
