@@ -4,6 +4,7 @@
 use core::ops::Deref;
 
 use serde::{Deserialize, Serialize};
+use serde_byte_array::ByteArray;
 use sha2::{Digest as _, Sha256};
 use subtle::ConstantTimeEq as _;
 use trussed::{
@@ -19,8 +20,8 @@ const SIZE: usize = 256;
 const SALT_LEN: usize = 16;
 const HASH_LEN: usize = 32;
 
-type Salt = [u8; SALT_LEN];
-type Hash = [u8; HASH_LEN];
+type Salt = ByteArray<SALT_LEN>;
+type Hash = ByteArray<HASH_LEN>;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct PinData {
@@ -37,7 +38,7 @@ impl PinData {
         R: CryptoRng + RngCore,
     {
         let mut salt = Salt::default();
-        rng.fill_bytes(&mut salt);
+        rng.fill_bytes(salt.as_mut());
         let hash = hash(id, pin, &salt);
         Self {
             id,
@@ -111,7 +112,10 @@ impl<'a> PinDataMut<'a> {
         if self.is_blocked() {
             return false;
         }
-        let success = hash(self.id, pin, &self.salt).ct_eq(&self.hash).into();
+        let success = hash(self.id, pin, &self.salt)
+            .as_ref()
+            .ct_eq(self.hash.as_ref())
+            .into();
         if let Some(retries) = &mut self.data.retries {
             if success {
                 if retries.reset() {
@@ -169,8 +173,8 @@ fn hash(id: PinId, pin: &Pin, salt: &Salt) -> Hash {
     digest.update([u8::from(id)]);
     digest.update([pin_len(pin)]);
     digest.update(pin);
-    digest.update(salt);
-    digest.finalize().into()
+    digest.update(salt.as_ref());
+    Hash::new(digest.finalize().into())
 }
 
 fn pin_len(pin: &Pin) -> u8 {
@@ -191,10 +195,19 @@ mod tests {
                 max: u8::MAX,
                 left: u8::MAX,
             }),
-            salt: [u8::MAX; SALT_LEN],
-            hash: [u8::MAX; HASH_LEN],
+            salt: [u8::MAX; SALT_LEN].into(),
+            hash: [u8::MAX; HASH_LEN].into(),
         };
         let serialized = trussed::cbor_serialize_bytes::<_, 1024>(&data).unwrap();
         assert!(serialized.len() <= SIZE);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_salt_size() {
+        // We allow one byte overhead for byte array serialization
+        let salt = Salt::from([u8::MAX; SALT_LEN]);
+        let serialized = trussed::cbor_serialize_bytes::<_, 1024>(&salt).unwrap();
+        assert!(serialized.len() <= SALT_LEN + 1, "{}", serialized.len());
     }
 }
