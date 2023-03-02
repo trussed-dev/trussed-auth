@@ -113,8 +113,8 @@ impl<'a> PinDataMut<'a> {
             return false;
         }
         let success = hash(self.id, pin, &self.salt)
-            .as_ref()
-            .ct_eq(self.hash.as_ref())
+            .as_slice()
+            .ct_eq(self.hash.as_slice())
             .into();
         if let Some(retries) = &mut self.data.retries {
             if success {
@@ -173,7 +173,7 @@ fn hash(id: PinId, pin: &Pin, salt: &Salt) -> Hash {
     digest.update([u8::from(id)]);
     digest.update([pin_len(pin)]);
     digest.update(pin);
-    digest.update(salt.as_ref());
+    digest.update(salt);
     Hash::new(digest.finalize().into())
 }
 
