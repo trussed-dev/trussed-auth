@@ -80,7 +80,7 @@ pub const MAX_PIN_LENGTH: usize = MAX_SHORT_DATA_LENGTH;
 /// A PIN.
 pub type Pin = Bytes<MAX_PIN_LENGTH>;
 
-const PIN_PATH: &str = "backend/auth/pin";
+const PIN_PATH: &str = "backend-auth/pin";
 
 /// The ID of a PIN within the namespace of a client.
 ///
