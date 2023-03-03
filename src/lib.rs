@@ -1,7 +1,7 @@
 // Copyright (C) Nitrokey GmbH
 // SPDX-License-Identifier: Apache-2.0 or MIT
 
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -80,8 +80,7 @@ pub const MAX_PIN_LENGTH: usize = MAX_SHORT_DATA_LENGTH;
 /// A PIN.
 pub type Pin = Bytes<MAX_PIN_LENGTH>;
 
-const PIN_PATH: &str = "backend-auth/pin";
-const SALT_PATH: &str = "backend-auth/salt";
+const BACKEND_DIR: &str = "backend-auth";
 
 /// The ID of a PIN within the namespace of a client.
 ///
@@ -112,9 +111,18 @@ pub struct PinId(u8);
 
 impl PinId {
     fn path(&self) -> PathBuf {
-        let mut path = PathBuf::from(PIN_PATH);
-        path.push(&PathBuf::from(&self.hex()));
-        path
+        const PIN_PREFIX: &[u8] = b"/pin.";
+        const N: usize = BACKEND_DIR.len();
+        const M: usize = PIN_PREFIX.len();
+
+        let mut path = [0; N + M + 2];
+        let (backend_dir, rest) = path.split_at_mut(N);
+        let (pin, id) = rest.split_at_mut(M);
+        backend_dir.copy_from_slice(BACKEND_DIR.as_bytes());
+        pin.copy_from_slice(PIN_PREFIX);
+        id.copy_from_slice(&self.hex());
+
+        PathBuf::from(&path)
     }
 
     fn hex(&self) -> [u8; 2] {
@@ -135,5 +143,20 @@ impl From<u8> for PinId {
 impl From<PinId> for u8 {
     fn from(id: PinId) -> Self {
         id.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PinId;
+    use trussed::types::PathBuf;
+
+    quickcheck::quickcheck! {
+        fn test_pin_path(id: u8) -> bool {
+            let actual = PinId(id).path();
+            let expected = PathBuf::from(format!("backend-auth/pin.{id:02x}").as_str());
+            println!("id: {id}, actual: {actual}, expected: {expected}");
+            actual == expected
+        }
     }
 }

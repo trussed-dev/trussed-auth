@@ -22,7 +22,7 @@ use trussed::{
 
 use crate::{
     extension::{reply, AuthExtension, AuthReply, AuthRequest},
-    PIN_PATH, SALT_PATH,
+    BACKEND_DIR,
 };
 use data::{Key, PinData, Salt, KEY_LEN, SALT_LEN};
 
@@ -50,6 +50,20 @@ impl fmt::Debug for HardwareKey {
 ///
 /// This implementation stores PINs together with their retry counters on the filesystem.  PINs are
 /// hashed with SHA-256 using a salt that is generated per PIN.
+///
+/// # Filesystem Layout
+///
+/// ```text
+/// trussed/
+///     backend-auth/
+///         salt            global salt for key derivation
+/// <client>/
+///     backend-auth/
+///         pin.<id>        PIN data, can be deleted with DeletePin or DeleteAllPins
+/// ```
+///
+/// The storage location can be set when creating the backend, see [`AuthBackend::new`][] and
+/// [`AuthBackend::with_hw_key`][].
 #[derive(Clone, Debug)]
 pub struct AuthBackend {
     location: Location,
@@ -80,7 +94,7 @@ impl AuthBackend {
         trussed_filestore: &mut impl Filestore,
         rng: &mut R,
     ) -> Result<Salt, Error> {
-        let path = PathBuf::from(SALT_PATH);
+        let path = PathBuf::from(BACKEND_DIR).join(&PathBuf::from("salt"));
         trussed_filestore
             .read(&path, self.location)
             .or_else(|_| {
@@ -263,7 +277,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 Ok(reply::DeletePin.into())
             }
             AuthRequest::DeleteAllPins(_) => {
-                fs.remove_dir_all(&PathBuf::from(PIN_PATH), self.location)
+                fs.remove_dir_all(&PathBuf::from(BACKEND_DIR), self.location)
                     .map_err(|_| Error::WriteFailed)?;
                 Ok(reply::DeleteAllPins.into())
             }
