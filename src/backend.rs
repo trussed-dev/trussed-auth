@@ -32,6 +32,8 @@ pub const MAX_HW_KEY_LEN: usize = 64;
 #[derive(Clone)]
 enum HardwareKey {
     None,
+    /// Means that the hardware key was not obtainable and that operations depending on it should fail
+    Missing,
     Raw(Bytes<MAX_HW_KEY_LEN>),
     Extracted(Hkdf<Sha256>),
 }
@@ -40,6 +42,7 @@ impl fmt::Debug for HardwareKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::None => f.debug_tuple("None").finish(),
+            Self::Missing => f.debug_tuple("Missing").finish(),
             Self::Raw(_) => f.debug_tuple("Raw").field(&"[redacted]").finish(),
             Self::Extracted(_) => f.debug_tuple("Raw").field(&"[redacted]").finish(),
         }
@@ -86,6 +89,18 @@ impl AuthBackend {
         Self {
             location,
             hw_key: HardwareKey::Raw(hw_key),
+        }
+    }
+
+    /// Creates a new `AuthBackend` with a missing hw key
+    ///
+    /// Contrary to [`new`](Self::new) which uses a default `&[]` key, this will make operations depending on the hardware key to fail:
+    /// - [`set_pin`](crate::AuthClient::set_pin) with `derive_key = true`
+    /// - All operations on a pin that was created with `derive_key = true`
+    pub fn with_missing_hw_key(location: Location) -> Self {
+        Self {
+            location,
+            hw_key: HardwareKey::Missing,
         }
     }
 
@@ -146,6 +161,7 @@ impl AuthBackend {
     ) -> Result<Key, Error> {
         Ok(match &self.hw_key {
             HardwareKey::Extracted(okm) => Self::expand(okm, &client_id),
+            HardwareKey::Missing => return Err(Error::MissingHwKey),
             HardwareKey::Raw(hw_k) => {
                 let kdf = self.extract(trussed_filestore, Some(hw_k.clone()), rng)?;
                 Self::expand(kdf, &client_id)
@@ -292,6 +308,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Error {
     NotFound,
+    MissingHwKey,
     ReadFailed,
     WriteFailed,
     DeserializationFailed,
@@ -303,6 +320,7 @@ impl From<Error> for trussed::error::Error {
     fn from(error: Error) -> Self {
         match error {
             Error::NotFound => Self::NoSuchKey,
+            Error::MissingHwKey => Self::GeneralError,
             Error::ReadFailed => Self::FilesystemReadFailure,
             Error::WriteFailed => Self::FilesystemWriteFailure,
             Error::DeserializationFailed => Self::ImplementationError,
