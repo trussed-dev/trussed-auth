@@ -432,6 +432,58 @@ fn pin_key() {
 }
 
 #[test]
+fn reset_pin_key() {
+    run_with_hw_key(
+        BACKENDS,
+        Bytes::from_slice(b"Some HW ikm").unwrap(),
+        |client| {
+            let pin1 = Bytes::from_slice(b"12345678").unwrap();
+            let pin2 = Bytes::from_slice(b"123456").unwrap();
+            let pin3 = Bytes::from_slice(b"1234567890").unwrap();
+
+            syscall!(client.set_pin(Pin::User, pin1.clone(), Some(3), true));
+            assert!(syscall!(client.get_pin_key(Pin::User, pin2.clone()))
+                .result
+                .is_none());
+            assert_eq!(syscall!(client.pin_retries(Pin::User)).retries, Some(2));
+            assert!(!syscall!(client.check_pin(Pin::User, pin2.clone())).success);
+            assert_eq!(syscall!(client.pin_retries(Pin::User)).retries, Some(1));
+            assert!(syscall!(client.check_pin(Pin::User, pin1.clone())).success);
+            let key = syscall!(client.get_pin_key(Pin::User, pin1))
+                .result
+                .unwrap();
+            assert_eq!(syscall!(client.pin_retries(Pin::User)).retries, Some(3));
+            let mac = syscall!(client.sign_hmacsha256(key, b"Some data")).signature;
+
+            syscall!(client.reset_set_pin_key(Pin::User, pin3.clone(), Some(3), key));
+
+            let key2 = syscall!(client.get_pin_key(Pin::User, pin3.clone()))
+                .result
+                .unwrap();
+            let mac2 = syscall!(client.sign_hmacsha256(key2, b"Some data")).signature;
+            assert_eq!(mac, mac2);
+
+            assert!(syscall!(client.change_pin(Pin::User, pin3.clone(), pin2.clone())).success);
+
+            let key3 = syscall!(client.get_pin_key(Pin::User, pin2.clone()))
+                .result
+                .unwrap();
+            let mac3 = syscall!(client.sign_hmacsha256(key3, b"Some data")).signature;
+            assert_eq!(mac, mac3);
+
+            assert!(!syscall!(client.check_pin(Pin::User, pin3.clone())).success);
+            assert!(!syscall!(client.check_pin(Pin::User, pin3.clone())).success);
+            assert!(!syscall!(client.check_pin(Pin::User, pin3)).success);
+            assert!(!syscall!(client.check_pin(Pin::User, pin2.clone())).success);
+            assert!(syscall!(client.get_pin_key(Pin::User, pin2))
+                .result
+                .is_none());
+            assert_eq!(syscall!(client.pin_retries(Pin::User)).retries, Some(0));
+        },
+    )
+}
+
+#[test]
 fn blocked_pin() {
     run(BACKENDS, |client| {
         let pin1 = Bytes::from_slice(b"12345678").unwrap();
