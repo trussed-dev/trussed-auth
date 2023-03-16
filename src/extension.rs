@@ -7,7 +7,10 @@ pub mod reply;
 pub mod request;
 
 use serde::{Deserialize, Serialize};
-use trussed::serde_extensions::{Extension, ExtensionClient, ExtensionResult};
+use trussed::{
+    serde_extensions::{Extension, ExtensionClient, ExtensionResult},
+    types::KeyId,
+};
 
 use crate::{Pin, PinId};
 
@@ -32,6 +35,7 @@ pub enum AuthRequest {
     CheckPin(request::CheckPin),
     GetPinKey(request::GetPinKey),
     SetPin(request::SetPin),
+    ResetPinKey(request::ResetPinKey),
     ChangePin(request::ChangePin),
     DeletePin(request::DeletePin),
     DeleteAllPins(request::DeleteAllPins),
@@ -45,6 +49,7 @@ pub enum AuthReply {
     CheckPin(reply::CheckPin),
     GetPinKey(reply::GetPinKey),
     SetPin(reply::SetPin),
+    ResetPinKey(reply::ResetPinKey),
     ChangePin(reply::ChangePin),
     DeletePin(reply::DeletePin),
     DeleteAllPins(reply::DeleteAllPins),
@@ -111,6 +116,25 @@ pub trait AuthClient: ExtensionClient<AuthExtension> {
             pin,
             retries,
             derive_key,
+        })
+    }
+
+    /// Reset a pin.
+    ///
+    /// Similar to [`set_pin`](AuthClient::set_pin), but allows the key that the pin will unwrap to be configured.
+    /// This allows for example backing up the key for a pin, to be able to restore it from another source.
+    fn reset_set_pin_key<I: Into<PinId>>(
+        &mut self,
+        id: I,
+        pin: Pin,
+        retries: Option<u8>,
+        key: KeyId,
+    ) -> AuthResult<'_, reply::ResetPinKey, Self> {
+        self.extension(request::ResetPinKey {
+            id: id.into(),
+            pin,
+            retries,
+            key,
         })
     }
 

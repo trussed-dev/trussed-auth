@@ -171,6 +171,39 @@ impl PinData {
         }
     }
 
+    pub fn reset_given_key<R>(
+        id: PinId,
+        pin: &Pin,
+        retries: Option<u8>,
+        rng: &mut R,
+        application_key: &Key,
+        mut key_to_wrap: Key,
+    ) -> Self
+    where
+        R: CryptoRng + RngCore,
+    {
+        use chacha20poly1305::{AeadInPlace, KeyInit};
+        let mut salt = Salt::default();
+        rng.fill_bytes(salt.as_mut());
+        let pin_key = derive_key(id, pin, &salt, application_key);
+        let aead = ChaCha8Poly1305::new((&*pin_key).into());
+        let nonce = Default::default();
+        #[allow(clippy::expect_used)]
+        let tag: [u8; CHACHA_TAG_LEN] = aead
+            .encrypt_in_place_detached(&nonce, &[u8::from(id)], &mut *key_to_wrap)
+            .expect("Wrapping the key should always work, length are acceptable")
+            .into();
+        Self {
+            id,
+            retries: retries.map(From::from),
+            salt,
+            data: KeyOrHash::Key(WrappedKeyData {
+                wrapped_key: key_to_wrap,
+                tag: tag.into(),
+            }),
+        }
+    }
+
     pub fn load<S: Filestore>(fs: &mut S, location: Location, id: PinId) -> Result<Self, Error> {
         let path = id.path();
         if !fs.exists(&path, location) {

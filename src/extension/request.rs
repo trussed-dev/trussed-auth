@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 or MIT
 
 use serde::{Deserialize, Serialize};
+use trussed::types::KeyId;
 
 use super::AuthRequest;
 use crate::{Pin, PinId};
@@ -53,6 +54,21 @@ pub struct SetPin {
 impl From<SetPin> for AuthRequest {
     fn from(request: SetPin) -> Self {
         Self::SetPin(request)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ResetPinKey {
+    pub id: PinId,
+    pub pin: Pin,
+    pub retries: Option<u8>,
+    /// If true, the PIN can be used to wrap/unwrap an application key
+    pub key: KeyId,
+}
+
+impl From<ResetPinKey> for AuthRequest {
+    fn from(request: ResetPinKey) -> Self {
+        Self::ResetPinKey(request)
     }
 }
 
