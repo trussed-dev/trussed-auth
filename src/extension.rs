@@ -119,9 +119,10 @@ pub trait AuthClient: ExtensionClient<AuthExtension> {
         })
     }
 
-    /// Reset a pin.
+    /// Set a pin, resetting it's retry counter and setting the key to be wrapped
     ///
     /// Similar to [`set_pin`](AuthClient::set_pin), but allows the key that the pin will unwrap to be configured.
+    /// Currently only symmetric 256 bit keys are accepted. This method should be used only with keys that were obtained through [`get_pin_key`](AuthClient::get_pin_key)
     /// This allows for example backing up the key for a pin, to be able to restore it from another source.
     fn set_pin_with_key<I: Into<PinId>>(
         &mut self,
