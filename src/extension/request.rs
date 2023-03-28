@@ -58,7 +58,7 @@ impl From<SetPin> for AuthRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ResetPinKey {
+pub struct SetPinWithKey {
     pub id: PinId,
     pub pin: Pin,
     pub retries: Option<u8>,
@@ -66,9 +66,9 @@ pub struct ResetPinKey {
     pub key: KeyId,
 }
 
-impl From<ResetPinKey> for AuthRequest {
-    fn from(request: ResetPinKey) -> Self {
-        Self::ResetPinKey(request)
+impl From<SetPinWithKey> for AuthRequest {
+    fn from(request: SetPinWithKey) -> Self {
+        Self::SetPinWithKey(request)
     }
 }
 

@@ -284,14 +284,14 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 .save(fs, self.location)?;
                 Ok(reply::SetPin.into())
             }
-            AuthRequest::ResetPinKey(request) => {
+            AuthRequest::SetPinWithKey(request) => {
                 let app_key = self.get_app_key(client_id, trussed_fs, ctx, rng)?;
                 let key_to_wrap =
                     keystore.load_key(Secrecy::Secret, Some(Kind::Symmetric(32)), &request.key)?;
                 let key_to_wrap = (&*key_to_wrap.material)
                     .try_into()
                     .map_err(|_| Error::ReadFailed)?;
-                PinData::reset_given_key(
+                PinData::reset_with_key(
                     request.id,
                     &request.pin,
                     request.retries,
@@ -300,7 +300,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                     key_to_wrap,
                 )
                 .save(fs, self.location)?;
-                Ok(reply::ResetPinKey.into())
+                Ok(reply::SetPinWithKey.into())
             }
             AuthRequest::DeletePin(request) => {
                 let path = request.id.path();
