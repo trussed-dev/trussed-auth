@@ -171,7 +171,7 @@ impl PinData {
         }
     }
 
-    pub fn reset_given_key<R>(
+    pub fn reset_with_key<R>(
         id: PinId,
         pin: &Pin,
         retries: Option<u8>,

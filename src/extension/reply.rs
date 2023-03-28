@@ -100,20 +100,20 @@ impl TryFrom<AuthReply> for SetPin {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ResetPinKey;
+pub struct SetPinWithKey;
 
-impl From<ResetPinKey> for AuthReply {
-    fn from(reply: ResetPinKey) -> Self {
-        Self::ResetPinKey(reply)
+impl From<SetPinWithKey> for AuthReply {
+    fn from(reply: SetPinWithKey) -> Self {
+        Self::SetPinWithKey(reply)
     }
 }
 
-impl TryFrom<AuthReply> for ResetPinKey {
+impl TryFrom<AuthReply> for SetPinWithKey {
     type Error = Error;
 
     fn try_from(reply: AuthReply) -> Result<Self> {
         match reply {
-            AuthReply::ResetPinKey(reply) => Ok(reply),
+            AuthReply::SetPinWithKey(reply) => Ok(reply),
             _ => Err(Error::InternalError),
         }
     }

@@ -455,7 +455,7 @@ fn reset_pin_key() {
             assert_eq!(syscall!(client.pin_retries(Pin::User)).retries, Some(3));
             let mac = syscall!(client.sign_hmacsha256(key, b"Some data")).signature;
 
-            syscall!(client.reset_set_pin_key(Pin::User, pin3.clone(), Some(3), key));
+            syscall!(client.set_pin_with_key(Pin::User, pin3.clone(), Some(3), key));
 
             let key2 = syscall!(client.get_pin_key(Pin::User, pin3.clone()))
                 .result

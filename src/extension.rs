@@ -35,7 +35,7 @@ pub enum AuthRequest {
     CheckPin(request::CheckPin),
     GetPinKey(request::GetPinKey),
     SetPin(request::SetPin),
-    ResetPinKey(request::ResetPinKey),
+    SetPinWithKey(request::SetPinWithKey),
     ChangePin(request::ChangePin),
     DeletePin(request::DeletePin),
     DeleteAllPins(request::DeleteAllPins),
@@ -49,7 +49,7 @@ pub enum AuthReply {
     CheckPin(reply::CheckPin),
     GetPinKey(reply::GetPinKey),
     SetPin(reply::SetPin),
-    ResetPinKey(reply::ResetPinKey),
+    SetPinWithKey(reply::SetPinWithKey),
     ChangePin(reply::ChangePin),
     DeletePin(reply::DeletePin),
     DeleteAllPins(reply::DeleteAllPins),
@@ -123,14 +123,14 @@ pub trait AuthClient: ExtensionClient<AuthExtension> {
     ///
     /// Similar to [`set_pin`](AuthClient::set_pin), but allows the key that the pin will unwrap to be configured.
     /// This allows for example backing up the key for a pin, to be able to restore it from another source.
-    fn reset_set_pin_key<I: Into<PinId>>(
+    fn set_pin_with_key<I: Into<PinId>>(
         &mut self,
         id: I,
         pin: Pin,
         retries: Option<u8>,
         key: KeyId,
-    ) -> AuthResult<'_, reply::ResetPinKey, Self> {
-        self.extension(request::ResetPinKey {
+    ) -> AuthResult<'_, reply::SetPinWithKey, Self> {
+        self.extension(request::SetPinWithKey {
             id: id.into(),
             pin,
             retries,
