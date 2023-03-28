@@ -47,7 +47,7 @@ pub struct SetPin {
     pub id: PinId,
     pub pin: Pin,
     pub retries: Option<u8>,
-    /// If true, the PIN can be used to wrap/unwrap an application key
+    /// If true, the PIN can be used to wrap/unwrap a PIN key
     pub derive_key: bool,
 }
 
@@ -62,7 +62,7 @@ pub struct ResetPinKey {
     pub id: PinId,
     pub pin: Pin,
     pub retries: Option<u8>,
-    /// If true, the PIN can be used to wrap/unwrap an application key
+    /// This key will be wrapped. It can be obtained again via a `GetPinKey` request
     pub key: KeyId,
 }
 
