@@ -336,7 +336,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 let salt = get_app_salt(fs, rng, self.location)?;
                 let key = expand_app_key(
                     &salt,
-                    &self.get_app_key(client_id, trussed_fs, ctx, rng)?,
+                    &self.get_app_key(client_id, global_fs, ctx, rng)?,
                     &request.info,
                 );
                 let key_id = keystore.store_key(
