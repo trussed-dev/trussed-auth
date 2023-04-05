@@ -11,7 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.2.1...HEAD
+
+## [0.2.1][]
+
+- Fix salt path location ([#25][])
+
+[#25]: https://github.com/trussed-dev/trussed-auth/pull/25
+[0.2.1]: https://github.com/trussed-dev/trussed-auth/releases/tag/v0.2.1
 
 ## [0.2.0][]
 
