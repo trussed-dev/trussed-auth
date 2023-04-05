@@ -318,7 +318,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 Ok(reply::DeletePin.into())
             }
             AuthRequest::DeleteAllPins(_) => {
-                fs.remove_dir_all(&PathBuf::from(BACKEND_DIR), self.location)
+                fs.remove_dir_all(&PathBuf::new(), self.location)
                     .map_err(|_| Error::WriteFailed)?;
                 Ok(reply::DeleteAllPins.into())
             }
