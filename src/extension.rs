@@ -9,7 +9,7 @@ pub mod request;
 use serde::{Deserialize, Serialize};
 use trussed::{
     serde_extensions::{Extension, ExtensionClient, ExtensionResult},
-    types::KeyId,
+    types::{KeyId, Message},
 };
 
 use crate::{Pin, PinId};
@@ -171,6 +171,14 @@ pub trait AuthClient: ExtensionClient<AuthExtension> {
     /// Returns the remaining retries for the given PIN.
     fn pin_retries<I: Into<PinId>>(&mut self, id: I) -> AuthResult<'_, reply::PinRetries, Self> {
         self.extension(request::PinRetries { id: id.into() })
+    }
+
+    /// Returns a keyid that is persistent given the "info" parameter
+    fn get_application_key(
+        &mut self,
+        info: Message,
+    ) -> AuthResult<'_, reply::GetApplicationKey, Self> {
+        self.extension(request::GetApplicationKey { info })
     }
 }
 
