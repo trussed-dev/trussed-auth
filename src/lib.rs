@@ -111,16 +111,9 @@ pub struct PinId(u8);
 
 impl PinId {
     fn path(&self) -> PathBuf {
-        const PIN_PREFIX: &[u8] = b"/pin.";
-        const N: usize = BACKEND_DIR.len();
-        const M: usize = PIN_PREFIX.len();
-
-        let mut path = [0; N + M + 2];
-        let (backend_dir, rest) = path.split_at_mut(N);
-        let (pin, id) = rest.split_at_mut(M);
-        backend_dir.copy_from_slice(BACKEND_DIR.as_bytes());
-        pin.copy_from_slice(PIN_PREFIX);
-        id.copy_from_slice(&self.hex());
+        let mut path = [0; 6];
+        path[0..4].copy_from_slice(b"pin.");
+        path[4..].copy_from_slice(&self.hex());
 
         PathBuf::from(&path)
     }
@@ -154,7 +147,7 @@ mod tests {
     quickcheck::quickcheck! {
         fn test_pin_path(id: u8) -> bool {
             let actual = PinId(id).path();
-            let expected = PathBuf::from(format!("backend-auth/pin.{id:02x}").as_str());
+            let expected = PathBuf::from(format!("pin.{id:02x}").as_str());
             println!("id: {id}, actual: {actual}, expected: {expected}");
             actual == expected
         }
