@@ -110,7 +110,7 @@ impl AuthBackend {
         global_fs: &mut impl Filestore,
         rng: &mut R,
     ) -> Result<Salt, Error> {
-        let path = PathBuf::from(BACKEND_DIR).join(&PathBuf::from("salt"));
+        let path = PathBuf::from("salt");
         global_fs
             .read(&path, self.location)
             .or_else(|_| {
