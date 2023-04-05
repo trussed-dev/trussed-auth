@@ -208,7 +208,14 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
         request: &AuthRequest,
         resources: &mut ServiceResources<P>,
     ) -> Result<AuthReply> {
-        let fs = &mut resources.filestore(core_ctx);
+        // FIXME: Have a real implementation from trussed
+        let mut backend_path = core_ctx.path.clone();
+        backend_path.push(&PathBuf::from(BACKEND_DIR));
+        let fs = &mut resources.filestore(&CoreContext {
+            path: backend_path,
+            read_dir_state: None,
+            read_dir_files_state: None,
+        });
         let trussed_fs = &mut resources.trussed_filestore();
         let rng = &mut resources.rng()?;
         let client_id = core_ctx.path.clone();
