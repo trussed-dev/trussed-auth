@@ -122,10 +122,10 @@ mod dispatch {
 use rand_core::{OsRng, RngCore as _};
 use trussed::{
     backend::BackendId,
-    client::{ClientImplementation, HmacSha256},
+    client::{ClientImplementation, FilesystemClient, HmacSha256},
     service::Service,
     syscall, try_syscall,
-    types::Bytes,
+    types::{Bytes, Location, PathBuf},
     virt::{self, Ram},
 };
 use trussed_auth::{AuthClient as _, PinId, MAX_HW_KEY_LEN};
@@ -644,6 +644,10 @@ fn delete_all_pins() {
         assert!(reply.has_pin);
         let reply = syscall!(client.has_pin(Pin::Admin));
         assert!(reply.has_pin);
+        assert!(try_syscall!(
+            client.read_file(Location::Internal, PathBuf::from("/backend-auth/pin.00"))
+        )
+        .is_err());
 
         syscall!(client.delete_all_pins());
 
