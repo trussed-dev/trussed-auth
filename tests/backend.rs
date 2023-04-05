@@ -125,7 +125,7 @@ use trussed::{
     client::{ClientImplementation, FilesystemClient, HmacSha256},
     service::Service,
     syscall, try_syscall,
-    types::{Bytes, Location, PathBuf},
+    types::{Bytes, Location, Message, PathBuf},
     virt::{self, Ram},
 };
 use trussed_auth::{AuthClient as _, PinId, MAX_HW_KEY_LEN};
@@ -660,5 +660,32 @@ fn delete_all_pins() {
         assert!(result.is_err());
         let result = try_syscall!(client.check_pin(Pin::Admin, pin2));
         assert!(result.is_err());
+    })
+}
+
+#[test]
+fn application_key() {
+    run(BACKENDS, |client| {
+        let info1 = Message::from_slice(b"test1").unwrap();
+        let info2 = Message::from_slice(b"test2").unwrap();
+        let app_key1 = syscall!(client.get_application_key(info1.clone())).key;
+        let app_key2 = syscall!(client.get_application_key(info2)).key;
+        let mac1 = syscall!(client.sign_hmacsha256(app_key1, b"Some data")).signature;
+        let mac2 = syscall!(client.sign_hmacsha256(app_key2, b"Some data")).signature;
+        // Different info leads to different keys
+        assert_ne!(mac1, mac2);
+
+        let app_key1_again = syscall!(client.get_application_key(info1.clone())).key;
+        let mac1_again = syscall!(client.sign_hmacsha256(app_key1_again, b"Some data")).signature;
+        // Same info leads to same key
+        assert_eq!(mac1, mac1_again);
+
+        syscall!(client.delete_all_pins());
+
+        // After deletion same info leads to different keys
+        let app_key1_after_delete = syscall!(client.get_application_key(info1)).key;
+        let mac1_after_delete =
+            syscall!(client.sign_hmacsha256(app_key1_after_delete, b"Some data")).signature;
+        assert_ne!(mac1, mac1_after_delete);
     })
 }
