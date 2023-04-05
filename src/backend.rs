@@ -58,11 +58,13 @@ impl fmt::Debug for HardwareKey {
 ///
 /// ```text
 /// trussed/
-///     backend-auth/
-///         salt            global salt for key derivation
+///     dat/
+///         backend-auth/
+///             salt            global salt for key derivation
 /// <client>/
 ///     backend-auth/
-///         pin.<id>        PIN data, can be deleted with DeletePin or DeleteAllPins
+///         dat/
+///             pin.<id>        PIN data, can be deleted with DeletePin or DeleteAllPins
 /// ```
 ///
 /// The storage location can be set when creating the backend, see [`AuthBackend::new`][] and
