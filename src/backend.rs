@@ -57,10 +57,9 @@ impl fmt::Debug for HardwareKey {
 /// # Filesystem Layout
 ///
 /// ```text
-/// trussed/
+/// backend-auth/
 ///     dat/
-///         backend-auth/
-///             salt            global salt for key derivation
+///        salt            global salt for key derivation
 /// <client>/
 ///     backend-auth/
 ///         dat/
@@ -108,21 +107,21 @@ impl AuthBackend {
 
     fn get_global_salt<R: CryptoRng + RngCore>(
         &self,
-        trussed_filestore: &mut impl Filestore,
+        global_fs: &mut impl Filestore,
         rng: &mut R,
     ) -> Result<Salt, Error> {
         let path = PathBuf::from(BACKEND_DIR).join(&PathBuf::from("salt"));
-        trussed_filestore
+        global_fs
             .read(&path, self.location)
             .or_else(|_| {
-                if trussed_filestore.exists(&path, self.location) {
+                if global_fs.exists(&path, self.location) {
                     return Err(Error::ReadFailed);
                 }
 
                 let mut salt = Bytes::<SALT_LEN>::default();
                 salt.resize_to_capacity();
                 rng.fill_bytes(&mut salt);
-                trussed_filestore
+                global_fs
                     .write(&path, self.location, &salt)
                     .or(Err(Error::WriteFailed))
                     .and(Ok(salt))
@@ -132,12 +131,12 @@ impl AuthBackend {
 
     fn extract<R: CryptoRng + RngCore>(
         &mut self,
-        trussed_filestore: &mut impl Filestore,
+        global_fs: &mut impl Filestore,
         ikm: Option<Bytes<MAX_HW_KEY_LEN>>,
         rng: &mut R,
     ) -> Result<&Hkdf<Sha256>, Error> {
         let ikm: &[u8] = ikm.as_deref().map(|i| &**i).unwrap_or(&[]);
-        let salt = self.get_global_salt(trussed_filestore, rng)?;
+        let salt = self.get_global_salt(global_fs, rng)?;
         let kdf = Hkdf::new(Some(&*salt), ikm);
         self.hw_key = HardwareKey::Extracted(kdf);
         match &self.hw_key {
@@ -158,18 +157,18 @@ impl AuthBackend {
     fn generate_app_key<R: CryptoRng + RngCore>(
         &mut self,
         client_id: PathBuf,
-        trussed_filestore: &mut impl Filestore,
+        global_fs: &mut impl Filestore,
         rng: &mut R,
     ) -> Result<Key, Error> {
         Ok(match &self.hw_key {
             HardwareKey::Extracted(okm) => Self::expand(okm, &client_id),
             HardwareKey::Missing => return Err(Error::MissingHwKey),
             HardwareKey::Raw(hw_k) => {
-                let kdf = self.extract(trussed_filestore, Some(hw_k.clone()), rng)?;
+                let kdf = self.extract(global_fs, Some(hw_k.clone()), rng)?;
                 Self::expand(kdf, &client_id)
             }
             HardwareKey::None => {
-                let kdf = self.extract(trussed_filestore, None, rng)?;
+                let kdf = self.extract(global_fs, None, rng)?;
                 Self::expand(kdf, &client_id)
             }
         })
@@ -178,7 +177,7 @@ impl AuthBackend {
     fn get_app_key<R: CryptoRng + RngCore>(
         &mut self,
         client_id: PathBuf,
-        trussed_filestore: &mut impl Filestore,
+        global_fs: &mut impl Filestore,
         ctx: &mut AuthContext,
         rng: &mut R,
     ) -> Result<Key, Error> {
@@ -186,7 +185,7 @@ impl AuthBackend {
             return Ok(app_key);
         }
 
-        let app_key = self.generate_app_key(client_id, trussed_filestore, rng)?;
+        let app_key = self.generate_app_key(client_id, global_fs, rng)?;
         ctx.application_key = Some(app_key);
         Ok(app_key)
     }
@@ -218,7 +217,11 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
             read_dir_state: None,
             read_dir_files_state: None,
         });
-        let trussed_fs = &mut resources.trussed_filestore();
+        let global_fs = &mut resources.filestore(&CoreContext {
+            path: PathBuf::from(BACKEND_DIR),
+            read_dir_state: None,
+            read_dir_files_state: None,
+        });
         let rng = &mut resources.rng()?;
         let client_id = core_ctx.path.clone();
         let keystore = &mut resources.keystore(core_ctx)?;
@@ -233,7 +236,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                     self.location,
                     |data| {
                         data.check_pin(&request.pin, || {
-                            self.get_app_key(client_id, trussed_fs, ctx, rng)
+                            self.get_app_key(client_id, global_fs, ctx, rng)
                         })
                     },
                 )??;
@@ -241,7 +244,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
             }
             AuthRequest::GetPinKey(request) => {
                 let application_key =
-                    self.get_app_key(core_ctx.path.clone(), trussed_fs, ctx, rng)?;
+                    self.get_app_key(core_ctx.path.clone(), global_fs, ctx, rng)?;
                 let verification = PinData::load(fs, self.location, request.id)?.write(
                     fs,
                     self.location,
@@ -270,7 +273,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                         data.change_pin(
                             &request.old_pin,
                             &request.new_pin,
-                            move |rng| self.get_app_key(client_id, trussed_fs, ctx, rng),
+                            move |rng| self.get_app_key(client_id, global_fs, ctx, rng),
                             rng,
                         )
                     },
@@ -279,7 +282,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
             }
             AuthRequest::SetPin(request) => {
                 let maybe_app_key = if request.derive_key {
-                    Some(self.get_app_key(client_id, trussed_fs, ctx, rng)?)
+                    Some(self.get_app_key(client_id, global_fs, ctx, rng)?)
                 } else {
                     None
                 };
@@ -294,7 +297,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 Ok(reply::SetPin.into())
             }
             AuthRequest::SetPinWithKey(request) => {
-                let app_key = self.get_app_key(client_id, trussed_fs, ctx, rng)?;
+                let app_key = self.get_app_key(client_id, global_fs, ctx, rng)?;
                 let key_to_wrap =
                     keystore.load_key(Secrecy::Secret, Some(Kind::Symmetric(32)), &request.key)?;
                 let key_to_wrap = (&*key_to_wrap.material)
