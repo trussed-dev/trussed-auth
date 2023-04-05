@@ -80,6 +80,29 @@ impl TryFrom<AuthReply> for GetPinKey {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[must_use]
+pub struct GetApplicationKey {
+    pub key: KeyId,
+}
+
+impl From<GetApplicationKey> for AuthReply {
+    fn from(reply: GetApplicationKey) -> Self {
+        Self::GetApplicationKey(reply)
+    }
+}
+
+impl TryFrom<AuthReply> for GetApplicationKey {
+    type Error = Error;
+
+    fn try_from(reply: AuthReply) -> Result<Self> {
+        match reply {
+            AuthReply::GetApplicationKey(reply) => Ok(reply),
+            _ => Err(Error::InternalError),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SetPin;
 
 impl From<SetPin> for AuthReply {

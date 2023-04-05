@@ -21,6 +21,7 @@ use trussed::{
 };
 
 use crate::{
+    backend::data::{expand_app_key, get_app_salt},
     extension::{reply, AuthExtension, AuthReply, AuthRequest},
     BACKEND_DIR,
 };
@@ -330,6 +331,21 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
             AuthRequest::PinRetries(request) => {
                 let retries = PinData::load(fs, self.location, request.id)?.retries_left();
                 Ok(reply::PinRetries { retries }.into())
+            }
+            AuthRequest::GetApplicationKey(request) => {
+                let salt = get_app_salt(fs, rng, self.location)?;
+                let key = expand_app_key(
+                    &salt,
+                    &self.get_app_key(client_id, trussed_fs, ctx, rng)?,
+                    &request.info,
+                );
+                let key_id = keystore.store_key(
+                    Location::Volatile,
+                    Secrecy::Secret,
+                    Kind::Symmetric(KEY_LEN),
+                    &*key,
+                )?;
+                Ok(reply::GetApplicationKey { key: key_id }.into())
             }
         }
     }

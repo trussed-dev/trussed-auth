@@ -28,12 +28,14 @@ impl Extension for AuthExtension {
     type Reply = AuthReply;
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(missing_docs)]
 pub enum AuthRequest {
     HasPin(request::HasPin),
     CheckPin(request::CheckPin),
     GetPinKey(request::GetPinKey),
+    GetApplicationKey(request::GetApplicationKey),
     SetPin(request::SetPin),
     SetPinWithKey(request::SetPinWithKey),
     ChangePin(request::ChangePin),
@@ -48,6 +50,7 @@ pub enum AuthReply {
     HasPin(reply::HasPin),
     CheckPin(reply::CheckPin),
     GetPinKey(reply::GetPinKey),
+    GetApplicationKey(reply::GetApplicationKey),
     SetPin(reply::SetPin),
     SetPinWithKey(reply::SetPinWithKey),
     ChangePin(reply::ChangePin),

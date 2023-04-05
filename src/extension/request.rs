@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 or MIT
 
 use serde::{Deserialize, Serialize};
-use trussed::types::KeyId;
+use trussed::types::{KeyId, Message};
 
 use super::AuthRequest;
 use crate::{Pin, PinId};
@@ -39,6 +39,17 @@ pub struct GetPinKey {
 impl From<GetPinKey> for AuthRequest {
     fn from(request: GetPinKey) -> Self {
         Self::GetPinKey(request)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GetApplicationKey {
+    pub info: Message,
+}
+
+impl From<GetApplicationKey> for AuthRequest {
+    fn from(request: GetApplicationKey) -> Self {
+        Self::GetApplicationKey(request)
     }
 }
 

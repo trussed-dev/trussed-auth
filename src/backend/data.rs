@@ -12,11 +12,12 @@ use subtle::ConstantTimeEq as _;
 use trussed::{
     platform::{CryptoRng, RngCore},
     store::filestore::Filestore,
-    types::Location,
+    types::{Location, PathBuf},
+    Bytes,
 };
 
 use super::Error;
-use crate::{Pin, PinId, MAX_PIN_LENGTH};
+use crate::{Pin, PinId, BACKEND_DIR, MAX_PIN_LENGTH};
 
 pub(crate) const SIZE: usize = 256;
 pub(crate) const CHACHA_TAG_LEN: usize = 16;
@@ -491,6 +492,56 @@ fn derive_key(id: PinId, pin: &Pin, salt: &Salt, application_key: &[u8; 32]) -> 
 fn pin_len(pin: &Pin) -> u8 {
     const _: () = assert!(MAX_PIN_LENGTH <= u8::MAX as usize);
     pin.len() as u8
+}
+
+fn app_salt_path() -> PathBuf {
+    const SALT_PATH: &str = "application_salt";
+
+    let mut path = PathBuf::new();
+    path.push(&PathBuf::from(BACKEND_DIR));
+    path.push(&PathBuf::from(SALT_PATH));
+    path
+}
+
+pub(crate) fn get_app_salt<S: Filestore, R: CryptoRng + RngCore>(
+    fs: &mut S,
+    rng: &mut R,
+    location: Location,
+) -> Result<Salt, Error> {
+    if !fs.exists(&app_salt_path(), location) {
+        create_app_salt(fs, rng, location)
+    } else {
+        load_app_salt(fs, location)
+    }
+}
+
+fn create_app_salt<S: Filestore, R: CryptoRng + RngCore>(
+    fs: &mut S,
+    rng: &mut R,
+    location: Location,
+) -> Result<Salt, Error> {
+    let mut salt = Salt::default();
+    rng.fill_bytes(&mut *salt);
+    fs.write(&app_salt_path(), location, &*salt)
+        .map_err(|_| Error::WriteFailed)?;
+    Ok(salt)
+}
+
+fn load_app_salt<S: Filestore>(fs: &mut S, location: Location) -> Result<Salt, Error> {
+    fs.read(&app_salt_path(), location)
+        .map_err(|_| Error::ReadFailed)
+        .and_then(|b: Bytes<SALT_LEN>| (**b).try_into().map_err(|_| Error::ReadFailed))
+}
+
+pub fn expand_app_key(salt: &Salt, application_key: &Key, info: &[u8]) -> Key {
+    #[allow(clippy::expect_used)]
+    let mut hmac = Hmac::<Sha256>::new_from_slice(&**application_key)
+        .expect("Slice will always be of acceptable size");
+    hmac.update(&**salt);
+    hmac.update(&(info.len() as u64).to_be_bytes());
+    hmac.update(info);
+    let tmp: [_; HASH_LEN] = hmac.finalize().into_bytes().into();
+    tmp.into()
 }
 
 #[cfg(test)]
