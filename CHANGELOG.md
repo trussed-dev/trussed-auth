@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased][]
 
+- Use `CoreContext::new` to fix compilation with recent Trussed changes.
+
 [Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.2.1...HEAD
 
 ## [0.2.1][] - 2023-04-05
