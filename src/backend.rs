@@ -212,16 +212,8 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
         // FIXME: Have a real implementation from trussed
         let mut backend_path = core_ctx.path.clone();
         backend_path.push(&PathBuf::from(BACKEND_DIR));
-        let fs = &mut resources.filestore(&CoreContext {
-            path: backend_path,
-            read_dir_state: None,
-            read_dir_files_state: None,
-        });
-        let global_fs = &mut resources.filestore(&CoreContext {
-            path: PathBuf::from(BACKEND_DIR),
-            read_dir_state: None,
-            read_dir_files_state: None,
-        });
+        let fs = &mut resources.filestore(&CoreContext::new(backend_path));
+        let global_fs = &mut resources.filestore(&CoreContext::new(PathBuf::from(BACKEND_DIR)));
         let rng = &mut resources.rng()?;
         let client_id = core_ctx.path.clone();
         let keystore = &mut resources.keystore(core_ctx)?;
