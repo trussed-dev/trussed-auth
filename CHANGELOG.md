@@ -11,9 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased][]
 
-- Use `CoreContext::new` to fix compilation with recent Trussed changes.
+[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.2.2...HEAD
 
-[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.2.1...HEAD
+## [0.2.2][] - 2023-04-26
+
+- Use `CoreContext::new` to fix compilation with recent Trussed changes.
+- Provide a derived application key for encryption without a PIN ([#20][])
+
+[#20]: https://github.com/trussed-dev/trussed-auth/issues/20
+[0.2.2]: https://github.com/trussed-dev/trussed-auth/releases/tag/v0.2.2
 
 ## [0.2.1][] - 2023-04-05
 
