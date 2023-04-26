@@ -226,3 +226,42 @@ impl TryFrom<AuthReply> for PinRetries {
         }
     }
 }
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ResetAppKeys;
+
+impl From<ResetAppKeys> for AuthReply {
+    fn from(reply: ResetAppKeys) -> Self {
+        Self::ResetAppKeys(reply)
+    }
+}
+
+impl TryFrom<AuthReply> for ResetAppKeys {
+    type Error = Error;
+
+    fn try_from(reply: AuthReply) -> Result<Self> {
+        match reply {
+            AuthReply::ResetAppKeys(reply) => Ok(reply),
+            _ => Err(Error::InternalError),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ResetAuthData;
+
+impl From<ResetAuthData> for AuthReply {
+    fn from(reply: ResetAuthData) -> Self {
+        Self::ResetAuthData(reply)
+    }
+}
+
+impl TryFrom<AuthReply> for ResetAuthData {
+    type Error = Error;
+
+    fn try_from(reply: AuthReply) -> Result<Self> {
+        match reply {
+            AuthReply::ResetAuthData(reply) => Ok(reply),
+            _ => Err(Error::InternalError),
+        }
+    }
+}

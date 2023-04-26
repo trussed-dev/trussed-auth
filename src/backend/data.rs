@@ -512,6 +512,17 @@ pub(crate) fn get_app_salt<S: Filestore, R: CryptoRng + RngCore>(
     }
 }
 
+pub(crate) fn delete_app_salt<S: Filestore>(
+    fs: &mut S,
+    location: Location,
+) -> Result<(), trussed::Error> {
+    if fs.exists(&app_salt_path(), location) {
+        fs.remove_file(&app_salt_path(), location)
+    } else {
+        Ok(())
+    }
+}
+
 fn create_app_salt<S: Filestore, R: CryptoRng + RngCore>(
     fs: &mut S,
     rng: &mut R,

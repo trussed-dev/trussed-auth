@@ -42,6 +42,8 @@ pub enum AuthRequest {
     DeletePin(request::DeletePin),
     DeleteAllPins(request::DeleteAllPins),
     PinRetries(request::PinRetries),
+    ResetAppKeys(request::ResetAppKeys),
+    ResetAuthData(request::ResetAuthData),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -57,6 +59,8 @@ pub enum AuthReply {
     DeletePin(reply::DeletePin),
     DeleteAllPins(reply::DeleteAllPins),
     PinRetries(reply::PinRetries),
+    ResetAppKeys(reply::ResetAppKeys),
+    ResetAuthData(reply::ResetAuthData),
 }
 
 /// Provides access to the [`AuthExtension`][].
@@ -179,6 +183,16 @@ pub trait AuthClient: ExtensionClient<AuthExtension> {
         info: Message,
     ) -> AuthResult<'_, reply::GetApplicationKey, Self> {
         self.extension(request::GetApplicationKey { info })
+    }
+
+    /// Delete all application keys
+    fn reset_app_keys(&mut self) -> AuthResult<'_, reply::ResetAppKeys, Self> {
+        self.extension(request::ResetAppKeys {})
+    }
+
+    /// Combines [`reset_app_keys`][AuthClient::reset_app_keys] and [`delete_all_pins`](AuthClient::delete_all_pins)
+    fn reset_auth_data(&mut self) -> AuthResult<'_, reply::ResetAuthData, Self> {
+        self.extension(request::ResetAuthData {})
     }
 }
 

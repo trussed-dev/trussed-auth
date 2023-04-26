@@ -28,4 +28,4 @@ trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
 
 [patch.crates-io]
 littlefs2 = { git =  "https://github.com/Nitrokey/littlefs2", tag = "v0.3.2-nitrokey-2" }
-trussed = { git = "https://github.com/Nitrokey/trussed.git", tag = "v0.1.0-nitrokey-5" }
+trussed = { git = "https://github.com/sosthene-nitrokey/trussed.git", branch = "remove-dir-all-where" }

@@ -649,6 +649,12 @@ fn delete_all_pins() {
         )
         .is_err());
 
+        syscall!(client.reset_app_keys());
+        let reply = syscall!(client.has_pin(Pin::User));
+        assert!(reply.has_pin);
+        let reply = syscall!(client.has_pin(Pin::Admin));
+        assert!(reply.has_pin);
+
         syscall!(client.delete_all_pins());
 
         let reply = syscall!(client.has_pin(Pin::User));
@@ -664,7 +670,7 @@ fn delete_all_pins() {
 }
 
 #[test]
-fn application_key() {
+fn reset_application_key() {
     run(BACKENDS, |client| {
         let info1 = Message::from_slice(b"test1").unwrap();
         let info2 = Message::from_slice(b"test2").unwrap();
@@ -682,10 +688,74 @@ fn application_key() {
 
         syscall!(client.delete_all_pins());
 
+        let app_key1_after_delete = syscall!(client.get_application_key(info1.clone())).key;
+        let mac1_after_delete =
+            syscall!(client.sign_hmacsha256(app_key1_after_delete, b"Some data")).signature;
+        // Same info leads to same key
+        assert_eq!(mac1, mac1_after_delete);
+
+        syscall!(client.reset_app_keys());
+
         // After deletion same info leads to different keys
         let app_key1_after_delete = syscall!(client.get_application_key(info1)).key;
         let mac1_after_delete =
             syscall!(client.sign_hmacsha256(app_key1_after_delete, b"Some data")).signature;
         assert_ne!(mac1, mac1_after_delete);
+    })
+}
+
+#[test]
+fn reset_auth_data() {
+    run(BACKENDS, |client| {
+        /* ------- APP KEYS ------- */
+        let info1 = Message::from_slice(b"test1").unwrap();
+        let info2 = Message::from_slice(b"test2").unwrap();
+        let app_key1 = syscall!(client.get_application_key(info1.clone())).key;
+        let app_key2 = syscall!(client.get_application_key(info2)).key;
+        let mac1 = syscall!(client.sign_hmacsha256(app_key1, b"Some data")).signature;
+        let mac2 = syscall!(client.sign_hmacsha256(app_key2, b"Some data")).signature;
+        // Different info leads to different keys
+        assert_ne!(mac1, mac2);
+
+        let app_key1_again = syscall!(client.get_application_key(info1.clone())).key;
+        let mac1_again = syscall!(client.sign_hmacsha256(app_key1_again, b"Some data")).signature;
+        // Same info leads to same key
+        assert_eq!(mac1, mac1_again);
+
+        /* ------- PINS  ------- */
+        let pin1 = Bytes::from_slice(b"123456").unwrap();
+        let pin2 = Bytes::from_slice(b"12345678").unwrap();
+
+        syscall!(client.set_pin(Pin::User, pin1.clone(), None, false));
+        syscall!(client.set_pin(Pin::Admin, pin2.clone(), None, false));
+
+        let reply = syscall!(client.has_pin(Pin::User));
+        assert!(reply.has_pin);
+        let reply = syscall!(client.has_pin(Pin::Admin));
+        assert!(reply.has_pin);
+        assert!(try_syscall!(
+            client.read_file(Location::Internal, PathBuf::from("/backend-auth/pin.00"))
+        )
+        .is_err());
+
+        syscall!(client.reset_auth_data());
+
+        /* ------- APP KEYS ------- */
+        // After deletion same info leads to different keys
+        let app_key1_after_delete = syscall!(client.get_application_key(info1)).key;
+        let mac1_after_delete =
+            syscall!(client.sign_hmacsha256(app_key1_after_delete, b"Some data")).signature;
+        assert_ne!(mac1, mac1_after_delete);
+
+        /* ------- PINS  ------- */
+        let reply = syscall!(client.has_pin(Pin::User));
+        assert!(!reply.has_pin);
+        let reply = syscall!(client.has_pin(Pin::Admin));
+        assert!(!reply.has_pin);
+
+        let result = try_syscall!(client.check_pin(Pin::User, pin1));
+        assert!(result.is_err());
+        let result = try_syscall!(client.check_pin(Pin::Admin, pin2));
+        assert!(result.is_err());
     })
 }

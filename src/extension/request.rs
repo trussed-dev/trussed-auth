@@ -126,3 +126,21 @@ impl From<PinRetries> for AuthRequest {
         Self::PinRetries(request)
     }
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ResetAppKeys;
+
+impl From<ResetAppKeys> for AuthRequest {
+    fn from(request: ResetAppKeys) -> Self {
+        Self::ResetAppKeys(request)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ResetAuthData;
+
+impl From<ResetAuthData> for AuthRequest {
+    fn from(request: ResetAuthData) -> Self {
+        Self::ResetAuthData(request)
+    }
+}
