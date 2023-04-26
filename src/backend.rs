@@ -27,6 +27,8 @@ use crate::{
 };
 use data::{Key, PinData, Salt, KEY_LEN, SALT_LEN};
 
+use self::data::delete_app_salt;
+
 /// max accepted length for the hardware initial key material
 pub const MAX_HW_KEY_LEN: usize = 64;
 
@@ -316,9 +318,20 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 Ok(reply::DeletePin.into())
             }
             AuthRequest::DeleteAllPins(_) => {
+                fs.remove_dir_all_where(&PathBuf::new(), self.location, |entry| {
+                    entry.file_name().as_ref().starts_with("pin.")
+                })
+                .map_err(|_| Error::WriteFailed)?;
+                Ok(reply::DeleteAllPins.into())
+            }
+            AuthRequest::ResetAppKeys(_) => {
+                delete_app_salt(fs, self.location)?;
+                Ok(reply::ResetAppKeys {}.into())
+            }
+            AuthRequest::ResetAuthData(_) => {
                 fs.remove_dir_all(&PathBuf::new(), self.location)
                     .map_err(|_| Error::WriteFailed)?;
-                Ok(reply::DeleteAllPins.into())
+                Ok(reply::ResetAuthData.into())
             }
             AuthRequest::PinRetries(request) => {
                 let retries = PinData::load(fs, self.location, request.id)?.retries_left();
