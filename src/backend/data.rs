@@ -17,7 +17,7 @@ use trussed::{
 };
 
 use super::Error;
-use crate::{Pin, PinId, BACKEND_DIR, MAX_PIN_LENGTH};
+use crate::{Pin, PinId, MAX_PIN_LENGTH};
 
 pub(crate) const SIZE: usize = 256;
 pub(crate) const CHACHA_TAG_LEN: usize = 16;
@@ -497,10 +497,7 @@ fn pin_len(pin: &Pin) -> u8 {
 fn app_salt_path() -> PathBuf {
     const SALT_PATH: &str = "application_salt";
 
-    let mut path = PathBuf::new();
-    path.push(&PathBuf::from(BACKEND_DIR));
-    path.push(&PathBuf::from(SALT_PATH));
-    path
+    PathBuf::from(SALT_PATH)
 }
 
 pub(crate) fn get_app_salt<S: Filestore, R: CryptoRng + RngCore>(
