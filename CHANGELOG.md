@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased][]
 
+### Breaking Changes
+
+- Add `delete_app_keys` and `delete_auth_keys` syscalls. ([#33][])
+
+  - `delete_all_pins` now doesn't affect application keys
+  - `reset_app_keys`: delete all application keys. Getting them again after calling this will not yield the same key
+  - `reset_auth_data` combines `delete_all_pins` and `delete_app_keys`
+
+  Applications (trussed-secrets) relying on the old `delete_all_pins` behaviour will need to be fixed.
+
+[#33]: https://github.com/trussed-dev/trussed-auth/pull/33
 [Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.2.2...HEAD
 
 ## [0.2.2][] - 2023-04-26
