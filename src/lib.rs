@@ -110,7 +110,10 @@ const BACKEND_DIR: &str = "backend-auth";
 pub struct PinId(u8);
 
 impl PinId {
-    fn path(&self) -> PathBuf {
+    /// Get the path to the PIN id.
+    ///
+    /// Path are of the form `pin.XX` where `xx` is the hexadecimal representation of the PIN number.
+    pub fn path(&self) -> PathBuf {
         let mut path = [0; 6];
         path[0..4].copy_from_slice(b"pin.");
         path[4..].copy_from_slice(&self.hex());
@@ -118,7 +121,8 @@ impl PinId {
         PathBuf::from(&path)
     }
 
-    fn hex(&self) -> [u8; 2] {
+    /// Get the hex representation of the PIN id
+    pub fn hex(&self) -> [u8; 2] {
         const CHARS: &[u8; 16] = b"0123456789abcdef";
         [
             CHARS[usize::from(self.0 >> 4)],
