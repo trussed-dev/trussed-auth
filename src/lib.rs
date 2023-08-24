@@ -63,6 +63,8 @@
 mod backend;
 mod extension;
 
+use core::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 use trussed::{
     config::MAX_SHORT_DATA_LENGTH,
@@ -109,6 +111,12 @@ const BACKEND_DIR: &str = "backend-auth";
 )]
 pub struct PinId(u8);
 
+/// Error obtained when trying to parse a [`PinId`][] either through [`PinId::from_path`][] or through the [`FromStr`](core::str::FromStr) implementation.
+#[derive(
+    Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize,
+)]
+pub struct PinIdFromStrError;
+
 impl PinId {
     /// Get the path to the PIN id.
     ///
@@ -129,6 +137,58 @@ impl PinId {
             CHARS[usize::from(self.0 & 0xf)],
         ]
     }
+
+    /// Parse a PinId path
+    pub fn from_path(path: &str) -> Result<Self, PinIdFromStrError> {
+        let path = path
+            .strip_prefix("pin.")
+            .ok_or(PinIdFromStrError)?
+            .as_bytes();
+        if path.len() != 2 {
+            return Err(PinIdFromStrError);
+        }
+
+        let msb = match path[0] {
+            b'0' => 0x0,
+            b'1' => 0x1,
+            b'2' => 0x2,
+            b'3' => 0x3,
+            b'4' => 0x4,
+            b'5' => 0x5,
+            b'6' => 0x6,
+            b'7' => 0x7,
+            b'8' => 0x8,
+            b'9' => 0x9,
+            b'a' => 0xa,
+            b'b' => 0xb,
+            b'c' => 0xc,
+            b'd' => 0xd,
+            b'e' => 0xe,
+            b'f' => 0xf,
+            _ => return Err(PinIdFromStrError),
+        };
+        let lsb = match path[1] {
+            b'0' => 0x0,
+            b'1' => 0x1,
+            b'2' => 0x2,
+            b'3' => 0x3,
+            b'4' => 0x4,
+            b'5' => 0x5,
+            b'6' => 0x6,
+            b'7' => 0x7,
+            b'8' => 0x8,
+            b'9' => 0x9,
+            b'a' => 0xa,
+            b'b' => 0xb,
+            b'c' => 0xc,
+            b'd' => 0xd,
+            b'e' => 0xe,
+            b'f' => 0xf,
+            _ => return Err(PinIdFromStrError),
+        };
+
+        Ok(PinId((msb << 4) + lsb))
+    }
 }
 
 impl From<u8> for PinId {
@@ -143,6 +203,13 @@ impl From<PinId> for u8 {
     }
 }
 
+impl FromStr for PinId {
+    type Err = PinIdFromStrError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_path(s)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::PinId;
@@ -154,6 +221,13 @@ mod tests {
             let expected = PathBuf::from(format!("pin.{id:02x}").as_str());
             println!("id: {id}, actual: {actual}, expected: {expected}");
             actual == expected
+        }
+    }
+
+    #[test]
+    fn pin_id_path() {
+        for i in 0..u8::MAX {
+            assert_eq!(Ok(PinId(i)), PinId::from_path(PinId(i).path().as_ref()))
         }
     }
 }
