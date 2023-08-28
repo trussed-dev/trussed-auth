@@ -219,7 +219,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
         let global_fs = &mut resources.filestore(PathBuf::from(BACKEND_DIR));
         let rng = &mut resources.rng()?;
         let client_id = core_ctx.path.clone();
-        let keystore = &mut resources.keystore(core_ctx)?;
+        let keystore = &mut resources.keystore(core_ctx.path.clone())?;
         match request {
             AuthRequest::HasPin(request) => {
                 let has_pin = fs.exists(&request.id.path(), self.location);
