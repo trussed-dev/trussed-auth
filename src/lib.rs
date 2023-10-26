@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn pin_id_path() {
-        for i in 0..u8::MAX {
+        for i in 0..=u8::MAX {
             assert_eq!(Ok(PinId(i)), PinId::from_path(PinId(i).path().as_ref()));
             let actual = PinId(i).path();
             let expected = PathBuf::from(format!("pin.{i:02x}").as_str());
