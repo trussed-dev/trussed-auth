@@ -140,54 +140,13 @@ impl PinId {
 
     /// Parse a PinId path
     pub fn from_path(path: &str) -> Result<Self, PinIdFromStrError> {
-        let path = path
-            .strip_prefix("pin.")
-            .ok_or(PinIdFromStrError)?
-            .as_bytes();
+        let path = path.strip_prefix("pin.").ok_or(PinIdFromStrError)?;
         if path.len() != 2 {
             return Err(PinIdFromStrError);
         }
 
-        let msb = match path[0] {
-            b'0' => 0x0,
-            b'1' => 0x1,
-            b'2' => 0x2,
-            b'3' => 0x3,
-            b'4' => 0x4,
-            b'5' => 0x5,
-            b'6' => 0x6,
-            b'7' => 0x7,
-            b'8' => 0x8,
-            b'9' => 0x9,
-            b'a' => 0xa,
-            b'b' => 0xb,
-            b'c' => 0xc,
-            b'd' => 0xd,
-            b'e' => 0xe,
-            b'f' => 0xf,
-            _ => return Err(PinIdFromStrError),
-        };
-        let lsb = match path[1] {
-            b'0' => 0x0,
-            b'1' => 0x1,
-            b'2' => 0x2,
-            b'3' => 0x3,
-            b'4' => 0x4,
-            b'5' => 0x5,
-            b'6' => 0x6,
-            b'7' => 0x7,
-            b'8' => 0x8,
-            b'9' => 0x9,
-            b'a' => 0xa,
-            b'b' => 0xb,
-            b'c' => 0xc,
-            b'd' => 0xd,
-            b'e' => 0xe,
-            b'f' => 0xf,
-            _ => return Err(PinIdFromStrError),
-        };
-
-        Ok(PinId((msb << 4) + lsb))
+        let id = u8::from_str_radix(&*path, 16).map_err(|_| PinIdFromStrError)?;
+        Ok(PinId(id))
     }
 }
 
@@ -215,19 +174,14 @@ mod tests {
     use super::PinId;
     use trussed::types::PathBuf;
 
-    quickcheck::quickcheck! {
-        fn test_pin_path(id: u8) -> bool {
-            let actual = PinId(id).path();
-            let expected = PathBuf::from(format!("pin.{id:02x}").as_str());
-            println!("id: {id}, actual: {actual}, expected: {expected}");
-            actual == expected
-        }
-    }
-
     #[test]
     fn pin_id_path() {
         for i in 0..u8::MAX {
-            assert_eq!(Ok(PinId(i)), PinId::from_path(PinId(i).path().as_ref()))
+            assert_eq!(Ok(PinId(i)), PinId::from_path(PinId(i).path().as_ref()));
+            let actual = PinId(i).path();
+            let expected = PathBuf::from(format!("pin.{i:02x}").as_str());
+            println!("id: {i}, actual: {actual}, expected: {expected}");
+            assert_eq!(actual, expected);
         }
     }
 }
