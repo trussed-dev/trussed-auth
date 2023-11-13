@@ -111,7 +111,7 @@ const BACKEND_DIR: &str = "backend-auth";
 )]
 pub struct PinId(u8);
 
-/// Error obtained when trying to parse a [`PinId`][] either through [`PinId::from_path`][] or through the [`FromStr`](core::str::FromStr) implementation.
+/// Error obtained when trying to parse a [`PinId`][] either through [`PinId::from_path`][] or through the [`FromStr`][] implementation.
 #[derive(
     Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize,
 )]
@@ -145,7 +145,7 @@ impl PinId {
             return Err(PinIdFromStrError);
         }
 
-        let id = u8::from_str_radix(&*path, 16).map_err(|_| PinIdFromStrError)?;
+        let id = u8::from_str_radix(path, 16).map_err(|_| PinIdFromStrError)?;
         Ok(PinId(id))
     }
 }
