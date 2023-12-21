@@ -35,7 +35,7 @@ pub(crate) type Key = ByteArray<KEY_LEN>;
 ///
 /// ```rust,compile_fail
 /// // length depends on hardware
-/// let device_ikm: [u8]= values_from_hardware();
+/// let device_ikm: [u8] = values_from_hardware();
 ///
 /// // generated on first power-up, stays constant for the lifetime of the device
 /// let device_salt: [u8;32] = csprng();
@@ -105,7 +105,7 @@ pub(crate) type Key = ByteArray<KEY_LEN>;
 ///
 ///     to_presistent_storage(salt, wrapped_key);
 /// }
-/// ````
+/// ```
 #[derive(Debug, Deserialize, Serialize)]
 struct WrappedKeyData {
     wrapped_key: Key,
