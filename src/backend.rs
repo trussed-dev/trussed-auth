@@ -25,9 +25,9 @@ use crate::{
     extension::{reply, AuthExtension, AuthReply, AuthRequest},
     BACKEND_DIR,
 };
-use data::{Key, PinData, Salt, KEY_LEN, SALT_LEN};
+use data::{PinData, Salt, CHACHA_KEY_LEN, SALT_LEN};
 
-use self::data::delete_app_salt;
+use self::data::{delete_app_salt, ChachaKey};
 
 /// max accepted length for the hardware initial key material
 pub const MAX_HW_KEY_LEN: usize = 64;
@@ -149,8 +149,8 @@ impl AuthBackend {
         }
     }
 
-    fn expand(kdf: &Hkdf<Sha256>, client_id: &PathBuf) -> Key {
-        let mut out = Key::default();
+    fn expand(kdf: &Hkdf<Sha256>, client_id: &PathBuf) -> ChachaKey {
+        let mut out = ChachaKey::default();
         #[allow(clippy::expect_used)]
         kdf.expand(client_id.as_ref().as_bytes(), &mut *out)
             .expect("Out data is always valid");
@@ -162,7 +162,7 @@ impl AuthBackend {
         client_id: PathBuf,
         global_fs: &mut impl Filestore,
         rng: &mut R,
-    ) -> Result<Key, Error> {
+    ) -> Result<ChachaKey, Error> {
         Ok(match &self.hw_key {
             HardwareKey::Extracted(okm) => Self::expand(okm, &client_id),
             HardwareKey::Missing => return Err(Error::MissingHwKey),
@@ -183,7 +183,7 @@ impl AuthBackend {
         global_fs: &mut impl Filestore,
         ctx: &mut AuthContext,
         rng: &mut R,
-    ) -> Result<Key, Error> {
+    ) -> Result<ChachaKey, Error> {
         if let Some(app_key) = ctx.application_key {
             return Ok(app_key);
         }
@@ -197,7 +197,7 @@ impl AuthBackend {
 /// Per-client context for [`AuthBackend`][]
 #[derive(Default, Debug)]
 pub struct AuthContext {
-    application_key: Option<Key>,
+    application_key: Option<ChachaKey>,
 }
 
 impl Backend for AuthBackend {
@@ -249,7 +249,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                     let key_id = keystore.store_key(
                         Location::Volatile,
                         Secrecy::Secret,
-                        Kind::Symmetric(KEY_LEN),
+                        Kind::Symmetric(CHACHA_KEY_LEN),
                         &*k,
                     )?;
                     Ok(reply::GetPinKey {
@@ -347,7 +347,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 let key_id = keystore.store_key(
                     Location::Volatile,
                     Secrecy::Secret,
-                    Kind::Symmetric(KEY_LEN),
+                    Kind::Symmetric(CHACHA_KEY_LEN),
                     &*key,
                 )?;
                 Ok(reply::GetApplicationKey { key: key_id }.into())

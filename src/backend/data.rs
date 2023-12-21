@@ -23,12 +23,70 @@ pub(crate) const SIZE: usize = 256;
 pub(crate) const CHACHA_TAG_LEN: usize = 16;
 pub(crate) const SALT_LEN: usize = 16;
 pub(crate) const HASH_LEN: usize = 32;
-pub(crate) const KEY_LEN: usize = 32;
+pub(crate) const CHACHA_KEY_LEN: usize = 32;
+pub(crate) const X25519_KEY_LEN: usize = 32;
+const ENCODED_X25519_KEY_LEN: usize = X25519_KEY_LEN + 1;
 
 pub(crate) type Salt = ByteArray<SALT_LEN>;
 pub(crate) type Hash = ByteArray<HASH_LEN>;
 pub(crate) type ChaChaTag = ByteArray<CHACHA_TAG_LEN>;
-pub(crate) type Key = ByteArray<KEY_LEN>;
+pub(crate) type ChachaKey = ByteArray<CHACHA_KEY_LEN>;
+pub(crate) type X25519Key = ByteArray<X25519_KEY_LEN>;
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Key {
+    Chacha20Poly1305(ChachaKey),
+    X25519(X25519Key),
+}
+
+impl Serialize for Key {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Key::Chacha20Poly1305(k) => serializer.serialize_bytes(&**k),
+            Key::X25519(k) => {
+                let mut encoded = [0; ENCODED_X25519_KEY_LEN];
+                encoded[0..X25519_KEY_LEN].copy_from_slice(&**k);
+                serializer.serialize_bytes(&encoded)
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Key {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Visitor;
+
+        struct KeyVisitor;
+        impl<'de> Visitor<'de> for KeyVisitor {
+            type Value = Key;
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+                formatter.write_str("A byte array of length 32 or 33")
+            }
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match v.len() {
+                    CHACHA_KEY_LEN => Ok(Key::Chacha20Poly1305(ByteArray::new(
+                        v.try_into().expect("Len was just checked"),
+                    ))),
+                    ENCODED_X25519_KEY_LEN => Ok(Key::X25519(ByteArray::new(
+                        v.try_into().expect("Len was just checked"),
+                    ))),
+                    _ => Err(E::invalid_length(v.len(), &self)),
+                }
+            }
+        }
+
+        deserializer.deserialize_bytes(KeyVisitor)
+    }
+}
 
 /// Represent a key wrapped by the pin.
 /// The key derivation process is as follow (pseudocode):
@@ -138,7 +196,7 @@ impl PinData {
         pin: &Pin,
         retries: Option<u8>,
         rng: &mut R,
-        application_key: Option<&Key>,
+        application_key: Option<&ChachaKey>,
     ) -> Self
     where
         R: CryptoRng + RngCore,
@@ -148,7 +206,7 @@ impl PinData {
         let data = application_key
             .map(|k| {
                 use chacha20poly1305::{AeadInPlace, KeyInit};
-                let mut key = Key::default();
+                let mut key = ChachaKey::default();
                 rng.fill_bytes(&mut *key);
                 let pin_key = derive_key(id, pin, &salt, k);
                 let aead = ChaCha8Poly1305::new((&*pin_key).into());
@@ -162,7 +220,7 @@ impl PinData {
                     .into();
 
                 KeyOrHash::Key(WrappedKeyData {
-                    wrapped_key: key,
+                    wrapped_key: Key::Chacha20Poly1305(key),
                     tag: tag.into(),
                 })
             })
@@ -180,8 +238,8 @@ impl PinData {
         pin: &Pin,
         retries: Option<u8>,
         rng: &mut R,
-        application_key: &Key,
-        mut key_to_wrap: Key,
+        application_key: &ChachaKey,
+        mut key_to_wrap: ChachaKey,
     ) -> Self
     where
         R: CryptoRng + RngCore,
@@ -202,7 +260,7 @@ impl PinData {
             retries: retries.map(From::from),
             salt,
             data: KeyOrHash::Key(WrappedKeyData {
-                wrapped_key: key_to_wrap,
+                wrapped_key: Key::Chacha20Poly1305(key_to_wrap),
                 tag: tag.into(),
             }),
         }
@@ -262,7 +320,7 @@ pub(crate) struct PinDataMut<'a> {
 
 enum CheckResult {
     Validated,
-    Derived { k: Key, app_key: Key },
+    Derived { k: ChachaKey, app_key: ChachaKey },
     Failed,
 }
 
@@ -283,7 +341,7 @@ impl<'a> PinDataMut<'a> {
     fn check_or_unwrap(
         &mut self,
         pin: &Pin,
-        application_key: impl FnOnce() -> Result<Key, Error>,
+        application_key: impl FnOnce() -> Result<ChachaKey, Error>,
     ) -> Result<CheckResult, Error> {
         if self.is_blocked() {
             return Ok(CheckResult::Failed);
@@ -296,13 +354,23 @@ impl<'a> PinDataMut<'a> {
                     CheckResult::Failed
                 }
             }
-            KeyOrHash::Key(WrappedKeyData { wrapped_key, tag }) => {
+            KeyOrHash::Key(WrappedKeyData {
+                wrapped_key: Key::Chacha20Poly1305(wrapped_key),
+                tag,
+            }) => {
                 let app_key = application_key()?;
                 if let Some(k) = self.unwrap_key(pin, &app_key, wrapped_key, &tag) {
                     CheckResult::Derived { k, app_key }
                 } else {
                     CheckResult::Failed
                 }
+            }
+            KeyOrHash::Key(WrappedKeyData {
+                wrapped_key: Key::X25519(_x25519),
+                tag,
+            }) => {
+                let _ = tag;
+                todo!()
             }
         };
         if let Some(retries) = &mut self.data.retries {
@@ -321,7 +389,7 @@ impl<'a> PinDataMut<'a> {
     pub fn check_pin(
         &mut self,
         pin: &Pin,
-        application_key: impl FnOnce() -> Result<Key, Error>,
+        application_key: impl FnOnce() -> Result<ChachaKey, Error>,
     ) -> Result<bool, Error> {
         self.check_or_unwrap(pin, application_key)
             .map(|res| res.is_success())
@@ -331,10 +399,10 @@ impl<'a> PinDataMut<'a> {
     fn unwrap_key(
         &self,
         pin: &Pin,
-        application_key: &Key,
-        mut wrapped_key: Key,
+        application_key: &ChachaKey,
+        mut wrapped_key: ChachaKey,
         tag: &ChaChaTag,
-    ) -> Option<Key> {
+    ) -> Option<ChachaKey> {
         use chacha20poly1305::{AeadInPlace, KeyInit};
 
         let pin_key = derive_key(self.id, pin, &self.salt, application_key);
@@ -352,7 +420,11 @@ impl<'a> PinDataMut<'a> {
         .and(Some(wrapped_key))
     }
 
-    pub fn get_pin_key(&mut self, pin: &Pin, application_key: &Key) -> Result<Option<Key>, Error> {
+    pub fn get_pin_key(
+        &mut self,
+        pin: &Pin,
+        application_key: &ChachaKey,
+    ) -> Result<Option<ChachaKey>, Error> {
         match self.check_or_unwrap(pin, || Ok(*application_key))? {
             CheckResult::Validated => Err(Error::BadPinType),
             CheckResult::Derived { k, .. } => Ok(Some(k)),
@@ -378,8 +450,8 @@ impl<'a> PinDataMut<'a> {
     fn new_wrapping_pin<R: CryptoRng + RngCore>(
         &mut self,
         new: &Pin,
-        mut old_key: Key,
-        application_key: &Key,
+        mut old_key: ChachaKey,
+        application_key: &ChachaKey,
         rng: &mut R,
     ) {
         use chacha20poly1305::{AeadInPlace, KeyInit};
@@ -404,7 +476,7 @@ impl<'a> PinDataMut<'a> {
             retries: self.retries,
             salt,
             data: KeyOrHash::Key(WrappedKeyData {
-                wrapped_key: old_key,
+                wrapped_key: Key::Chacha20Poly1305(old_key),
                 tag: tag.into(),
             }),
         };
@@ -414,7 +486,7 @@ impl<'a> PinDataMut<'a> {
         &mut self,
         old_pin: &Pin,
         new_pin: &Pin,
-        application_key: impl FnOnce(&mut R) -> Result<Key, Error>,
+        application_key: impl FnOnce(&mut R) -> Result<ChachaKey, Error>,
         rng: &mut R,
     ) -> Result<bool, Error> {
         match self.check_or_unwrap(old_pin, || application_key(rng))? {
@@ -545,7 +617,7 @@ fn load_app_salt<S: Filestore>(fs: &mut S, location: Location) -> Result<Salt, E
         .and_then(|b: Bytes<SALT_LEN>| (**b).try_into().map_err(|_| Error::ReadFailed))
 }
 
-pub fn expand_app_key(salt: &Salt, application_key: &Key, info: &[u8]) -> Key {
+pub fn expand_app_key(salt: &Salt, application_key: &ChachaKey, info: &[u8]) -> ChachaKey {
     #[allow(clippy::expect_used)]
     let mut hmac = Hmac::<Sha256>::new_from_slice(&**application_key)
         .expect("Slice will always be of acceptable size");
@@ -630,7 +702,7 @@ mod tests {
             retries: None,
             salt: [0xFE; SALT_LEN].into(),
             data: KeyOrHash::Key(WrappedKeyData {
-                wrapped_key: [0xFC; KEY_LEN].into(),
+                wrapped_key: Key::Chacha20Poly1305([0xFC; CHACHA_KEY_LEN].into()),
                 tag: [0xFB; CHACHA_TAG_LEN].into(),
             }),
         };
@@ -655,7 +727,7 @@ mod tests {
                     len: 2,
                 },
                 Token::Str("wrapped_key"),
-                Token::Bytes(&[0xFC; KEY_LEN]),
+                Token::Bytes(&[0xFC; CHACHA_KEY_LEN]),
                 Token::Str("tag"),
                 Token::Bytes(&[0xFB; CHACHA_TAG_LEN]),
                 Token::StructEnd,
