@@ -24,7 +24,9 @@ trussed = { version = "0.1.0", features = ["serde-extensions"] }
 [dev-dependencies]
 quickcheck = { version = "1.0.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
+serde_test = "1.0.176"
 trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
+serde_cbor = { version = "0.11.2", features = ["std"] }
 
 [patch.crates-io]
 littlefs2 = { git =  "https://github.com/Nitrokey/littlefs2", tag = "v0.3.2-nitrokey-2" }

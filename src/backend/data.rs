@@ -106,18 +106,21 @@ pub(crate) type Key = ByteArray<KEY_LEN>;
 ///     to_presistent_storage(salt, wrapped_key);
 /// }
 /// ```
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Debug, Deserialize, Serialize)]
 struct WrappedKeyData {
     wrapped_key: Key,
     tag: ChaChaTag,
 }
 
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Debug, Deserialize, Serialize)]
 enum KeyOrHash {
     Key(WrappedKeyData),
     Hash(Hash),
 }
 
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct PinData {
     #[serde(skip)]
@@ -438,6 +441,7 @@ impl Deref for PinDataMut<'_> {
     }
 }
 
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 struct Retries {
     max: u8,
@@ -579,5 +583,84 @@ mod tests {
         let salt = Salt::from([u8::MAX; SALT_LEN]);
         let serialized = trussed::cbor_serialize_bytes::<_, 1024>(&salt).unwrap();
         assert!(serialized.len() <= SALT_LEN + 1, "{}", serialized.len());
+    }
+
+    #[test]
+    fn data_serialization() {
+        use serde_test::{assert_tokens, Token};
+
+        let data = PinData {
+            id: PinId::from(0),
+            retries: Some(Retries { max: 3, left: 1 }),
+            salt: [0xFE; SALT_LEN].into(),
+            data: KeyOrHash::Hash([0xFD; HASH_LEN].into()),
+        };
+
+        assert_tokens(
+            &data,
+            &[
+                Token::Struct {
+                    name: "PinData",
+                    // Id is skipped
+                    len: 3,
+                },
+                Token::Str("retries"),
+                Token::Some,
+                Token::Struct {
+                    name: "Retries",
+                    len: 2,
+                },
+                Token::Str("max"),
+                Token::U8(3),
+                Token::Str("left"),
+                Token::U8(1),
+                Token::StructEnd,
+                Token::Str("salt"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("data"),
+                Token::Enum { name: "KeyOrHash" },
+                Token::Str("Hash"),
+                Token::Bytes(&[0xFD; HASH_LEN]),
+                Token::StructEnd,
+            ],
+        );
+
+        let data = PinData {
+            id: PinId::from(0),
+            retries: None,
+            salt: [0xFE; SALT_LEN].into(),
+            data: KeyOrHash::Key(WrappedKeyData {
+                wrapped_key: [0xFC; KEY_LEN].into(),
+                tag: [0xFB; CHACHA_TAG_LEN].into(),
+            }),
+        };
+
+        assert_tokens(
+            &data,
+            &[
+                Token::Struct {
+                    name: "PinData",
+                    // Id is skipped
+                    len: 3,
+                },
+                Token::Str("retries"),
+                Token::None,
+                Token::Str("salt"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("data"),
+                Token::Enum { name: "KeyOrHash" },
+                Token::Str("Key"),
+                Token::Struct {
+                    name: "WrappedKeyData",
+                    len: 2,
+                },
+                Token::Str("wrapped_key"),
+                Token::Bytes(&[0xFC; KEY_LEN]),
+                Token::Str("tag"),
+                Token::Bytes(&[0xFB; CHACHA_TAG_LEN]),
+                Token::StructEnd,
+                Token::StructEnd,
+            ],
+        );
     }
 }
