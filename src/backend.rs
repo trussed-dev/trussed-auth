@@ -249,8 +249,8 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                     let key_id = keystore.store_key(
                         Location::Volatile,
                         Secrecy::Secret,
-                        Kind::Symmetric(CHACHA_KEY_LEN),
-                        &*k,
+                        k.kind(),
+                        &k.data(),
                     )?;
                     Ok(reply::GetPinKey {
                         result: Some(key_id),

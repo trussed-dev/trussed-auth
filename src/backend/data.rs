@@ -10,6 +10,7 @@ use serde_byte_array::ByteArray;
 use sha2::{Digest as _, Sha256};
 use subtle::ConstantTimeEq as _;
 use trussed::{
+    key,
     platform::{CryptoRng, RngCore},
     store::filestore::Filestore,
     types::{Location, PathBuf},
@@ -33,7 +34,7 @@ pub(crate) type ChaChaTag = ByteArray<CHACHA_TAG_LEN>;
 pub(crate) type ChachaKey = ByteArray<CHACHA_KEY_LEN>;
 pub(crate) type X25519Key = [u8; X25519_KEY_LEN];
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Key {
     Chacha20Poly1305(ChachaKey),
     X25519(X25519Key),
@@ -87,6 +88,27 @@ impl<'de> Deserialize<'de> for Key {
         }
 
         deserializer.deserialize_bytes(KeyVisitor)
+    }
+}
+
+pub(crate) enum DecryptedKey {
+    Chacha20Poly1305(ChachaKey),
+    X25519(salty::agreement::SecretKey),
+}
+
+impl DecryptedKey {
+    pub fn kind(&self) -> key::Kind {
+        match self {
+            DecryptedKey::Chacha20Poly1305(_) => key::Kind::Symmetric(CHACHA_KEY_LEN),
+            DecryptedKey::X25519(_) => key::Kind::X255,
+        }
+    }
+
+    pub fn data(&self) -> [u8; 32] {
+        match self {
+            DecryptedKey::Chacha20Poly1305(k) => (*k).into(),
+            DecryptedKey::X25519(k) => k.to_bytes(),
+        }
     }
 }
 
@@ -348,7 +370,7 @@ pub(crate) struct PinDataMut<'a> {
 
 enum CheckResult {
     Validated,
-    Derived { k: ChachaKey, app_key: ChachaKey },
+    Derived { k: DecryptedKey, app_key: ChachaKey },
     Failed,
 }
 
@@ -382,23 +404,13 @@ impl<'a> PinDataMut<'a> {
                     CheckResult::Failed
                 }
             }
-            KeyOrHash::Key(WrappedKeyData {
-                wrapped_key: Key::Chacha20Poly1305(wrapped_key),
-                tag,
-            }) => {
+            KeyOrHash::Key(WrappedKeyData { wrapped_key, tag }) => {
                 let app_key = application_key()?;
                 if let Some(k) = self.unwrap_key(pin, &app_key, wrapped_key, &tag) {
                     CheckResult::Derived { k, app_key }
                 } else {
                     CheckResult::Failed
                 }
-            }
-            KeyOrHash::Key(WrappedKeyData {
-                wrapped_key: Key::X25519(_x25519),
-                tag,
-            }) => {
-                let _ = tag;
-                todo!()
             }
         };
         if let Some(retries) = &mut self.data.retries {
@@ -428,9 +440,9 @@ impl<'a> PinDataMut<'a> {
         &self,
         pin: &Pin,
         application_key: &ChachaKey,
-        mut wrapped_key: ChachaKey,
+        mut wrapped_key: Key,
         tag: &ChaChaTag,
-    ) -> Option<ChachaKey> {
+    ) -> Option<DecryptedKey> {
         use chacha20poly1305::{AeadInPlace, KeyInit};
 
         let pin_key = derive_key(self.id, pin, &self.salt, application_key);
@@ -438,21 +450,35 @@ impl<'a> PinDataMut<'a> {
         // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
         // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
         let nonce = Default::default();
-        aead.decrypt_in_place_detached(
-            &nonce,
-            &[u8::from(self.data.id)],
-            &mut *wrapped_key,
-            (&**tag).into(),
-        )
-        .ok()
-        .and(Some(wrapped_key))
+
+        let aad_1;
+        let aad_2;
+        let (aad, mut key_data): (&[u8], _) = match &mut wrapped_key {
+            Key::Chacha20Poly1305(k) => {
+                aad_1 = [u8::from(self.data.id)];
+                (&aad_1, **k)
+            }
+            Key::X25519(k) => {
+                aad_2 = [u8::from(self.data.id), 0];
+                (&aad_2, *k)
+            }
+        };
+
+        aead.decrypt_in_place_detached(&nonce, aad, &mut key_data, (&**tag).into())
+            .ok()?;
+        match wrapped_key {
+            Key::Chacha20Poly1305(_) => Some(DecryptedKey::Chacha20Poly1305((key_data).into())),
+            Key::X25519(_) => Some(DecryptedKey::X25519(
+                salty::agreement::SecretKey::from_seed(&key_data),
+            )),
+        }
     }
 
     pub fn get_pin_key(
         &mut self,
         pin: &Pin,
         application_key: &ChachaKey,
-    ) -> Result<Option<ChachaKey>, Error> {
+    ) -> Result<Option<DecryptedKey>, Error> {
         match self.check_or_unwrap(pin, || Ok(*application_key))? {
             CheckResult::Validated => Err(Error::BadPinType),
             CheckResult::Derived { k, .. } => Ok(Some(k)),
@@ -478,7 +504,7 @@ impl<'a> PinDataMut<'a> {
     fn new_wrapping_pin<R: CryptoRng + RngCore>(
         &mut self,
         new: &Pin,
-        mut old_key: ChachaKey,
+        old_key: DecryptedKey,
         application_key: &ChachaKey,
         rng: &mut R,
     ) {
@@ -493,20 +519,39 @@ impl<'a> PinDataMut<'a> {
         // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
         let nonce = Default::default();
 
-        #[allow(clippy::expect_used)]
-        let tag: [u8; CHACHA_TAG_LEN] = aead
-            .encrypt_in_place_detached(&nonce, &[u8::from(self.id)], &mut *old_key)
-            .expect("Wrapping the key should always work, length are acceptable")
-            .into();
+        let data = match old_key {
+            DecryptedKey::Chacha20Poly1305(mut k) => {
+                #[allow(clippy::expect_used)]
+                let tag: [u8; CHACHA_TAG_LEN] = aead
+                    .encrypt_in_place_detached(&nonce, &[u8::from(self.id)], &mut *k)
+                    .expect("Wrapping the key should always work, length are acceptable")
+                    .into();
+
+                KeyOrHash::Key(WrappedKeyData {
+                    wrapped_key: Key::Chacha20Poly1305(k),
+                    tag: tag.into(),
+                })
+            }
+            DecryptedKey::X25519(k) => {
+                let mut data = k.to_bytes();
+                #[allow(clippy::expect_used)]
+                let tag: [u8; CHACHA_TAG_LEN] = aead
+                    .encrypt_in_place_detached(&nonce, &[u8::from(self.id), 0], &mut data)
+                    .expect("Wrapping the key should always work, length are acceptable")
+                    .into();
+
+                KeyOrHash::Key(WrappedKeyData {
+                    wrapped_key: Key::X25519(data),
+                    tag: tag.into(),
+                })
+            }
+        };
 
         *self.data = PinData {
             id: self.id,
             retries: self.retries,
             salt,
-            data: KeyOrHash::Key(WrappedKeyData {
-                wrapped_key: Key::Chacha20Poly1305(old_key),
-                tag: tag.into(),
-            }),
+            data,
         };
     }
 
