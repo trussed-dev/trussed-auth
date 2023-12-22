@@ -17,7 +17,7 @@ use trussed::{
 };
 
 use super::Error;
-use crate::{Pin, PinId, MAX_PIN_LENGTH};
+use crate::{request::DerivedKeyMechanism, Pin, PinId, MAX_PIN_LENGTH};
 
 pub(crate) const SIZE: usize = 256;
 pub(crate) const CHACHA_TAG_LEN: usize = 16;
@@ -31,7 +31,7 @@ pub(crate) type Salt = ByteArray<SALT_LEN>;
 pub(crate) type Hash = ByteArray<HASH_LEN>;
 pub(crate) type ChaChaTag = ByteArray<CHACHA_TAG_LEN>;
 pub(crate) type ChachaKey = ByteArray<CHACHA_KEY_LEN>;
-pub(crate) type X25519Key = ByteArray<X25519_KEY_LEN>;
+pub(crate) type X25519Key = [u8; X25519_KEY_LEN];
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Key {
@@ -48,7 +48,7 @@ impl Serialize for Key {
             Key::Chacha20Poly1305(k) => serializer.serialize_bytes(&**k),
             Key::X25519(k) => {
                 let mut encoded = [0; ENCODED_X25519_KEY_LEN];
-                encoded[0..X25519_KEY_LEN].copy_from_slice(&**k);
+                encoded[0..X25519_KEY_LEN].copy_from_slice(&*k);
                 serializer.serialize_bytes(&encoded)
             }
         }
@@ -76,9 +76,11 @@ impl<'de> Deserialize<'de> for Key {
                     CHACHA_KEY_LEN => Ok(Key::Chacha20Poly1305(ByteArray::new(
                         v.try_into().expect("Len was just checked"),
                     ))),
-                    ENCODED_X25519_KEY_LEN => Ok(Key::X25519(ByteArray::new(
-                        v.try_into().expect("Len was just checked"),
-                    ))),
+                    ENCODED_X25519_KEY_LEN if v[X25519_KEY_LEN] == 0 => Ok(Key::X25519(
+                        v[..X25519_KEY_LEN]
+                            .try_into()
+                            .expect("Len was just checked"),
+                    )),
                     _ => Err(E::invalid_length(v.len(), &self)),
                 }
             }
@@ -188,6 +190,12 @@ pub(crate) struct PinData {
     data: KeyOrHash,
 }
 
+/// Information required to derive a key
+pub(crate) struct DeriveKey {
+    pub(crate) application_key: ChachaKey,
+    pub(crate) key_type: DerivedKeyMechanism,
+}
+
 impl PinData {
     /// An application_key of `None` means that the pin should only be salted/hashed
     /// `Some` means that it should instead be used to wrap a 32 bytes encryption key
@@ -196,35 +204,55 @@ impl PinData {
         pin: &Pin,
         retries: Option<u8>,
         rng: &mut R,
-        application_key: Option<&ChachaKey>,
+        derive_parameter: Option<DeriveKey>,
     ) -> Self
     where
         R: CryptoRng + RngCore,
     {
         let mut salt = Salt::default();
         rng.fill_bytes(salt.as_mut());
-        let data = application_key
-            .map(|k| {
-                use chacha20poly1305::{AeadInPlace, KeyInit};
+        let data = match derive_parameter {
+            None => KeyOrHash::Hash(hash(id, pin, &salt)),
+            Some(DeriveKey {
+                application_key,
+                key_type: DerivedKeyMechanism::Chacha8Poly1305,
+            }) => {
                 let mut key = ChachaKey::default();
                 rng.fill_bytes(&mut *key);
-                let pin_key = derive_key(id, pin, &salt, k);
-                let aead = ChaCha8Poly1305::new((&*pin_key).into());
-                // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
-                // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
-                let nonce = Default::default();
-                #[allow(clippy::expect_used)]
-                let tag: [u8; CHACHA_TAG_LEN] = aead
-                    .encrypt_in_place_detached(&nonce, &[u8::from(id)], &mut *key)
-                    .expect("Wrapping the key should always work, length are acceptable")
-                    .into();
+                let tag = encrypt_pin_data(id, pin, &salt, &application_key, &mut *key, None);
 
                 KeyOrHash::Key(WrappedKeyData {
                     wrapped_key: Key::Chacha20Poly1305(key),
                     tag: tag.into(),
                 })
-            })
-            .unwrap_or_else(|| KeyOrHash::Hash(hash(id, pin, &salt)));
+            }
+            Some(DeriveKey {
+                application_key,
+                key_type: DerivedKeyMechanism::X25519,
+            }) => {
+                use salty::agreement::SecretKey;
+                let mut seed: [u8; 32] = Default::default();
+                rng.fill_bytes(&mut seed);
+                let key = SecretKey::from_seed(&seed);
+
+                let mut key_bytes = key.to_bytes();
+
+                // X25519 keys have a dedicated AAD to avoid key confusion
+                let tag = encrypt_pin_data(
+                    id,
+                    pin,
+                    &salt,
+                    &application_key,
+                    &mut key_bytes,
+                    Some([0x00]),
+                );
+
+                KeyOrHash::Key(WrappedKeyData {
+                    wrapped_key: Key::X25519(key_bytes),
+                    tag: tag.into(),
+                })
+            }
+        };
         Self {
             id,
             retries: retries.map(From::from),
@@ -563,6 +591,42 @@ fn derive_key(id: PinId, pin: &Pin, salt: &Salt, application_key: &[u8; 32]) -> 
     hmac.update(&**salt);
     let tmp: [_; HASH_LEN] = hmac.finalize().into_bytes().into();
     tmp.into()
+}
+
+fn encrypt_pin_data(
+    id: PinId,
+    pin: &Pin,
+    salt: &Salt,
+    application_key: &[u8; 32],
+    data: &mut [u8],
+    aad: Option<[u8; 1]>,
+) -> [u8; CHACHA_TAG_LEN] {
+    use chacha20poly1305::{AeadInPlace, KeyInit};
+    let pin_key = derive_key(id, pin, &salt, application_key);
+    let aead = ChaCha8Poly1305::new((&*pin_key).into());
+    // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
+    // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
+    let nonce = Default::default();
+
+    let sup_1;
+    let sup_2;
+
+    let aad: &[u8] = match aad {
+        Some([aad_byte]) => {
+            sup_1 = [u8::from(id), aad_byte];
+            &sup_1
+        }
+        None => {
+            sup_2 = [u8::from(id)];
+            &sup_2
+        }
+    };
+    #[allow(clippy::expect_used)]
+    let tag: [u8; CHACHA_TAG_LEN] = aead
+        .encrypt_in_place_detached(&nonce, aad, &mut *data)
+        .expect("Wrapping the key should always work, length are acceptable")
+        .into();
+    tag
 }
 
 fn pin_len(pin: &Pin) -> u8 {

@@ -14,6 +14,8 @@ use trussed::{
 
 use crate::{Pin, PinId};
 
+use self::request::DerivedKeyMechanism;
+
 /// A result returned by [`AuthClient`][].
 pub type AuthResult<'a, R, C> = ExtensionResult<'a, AuthExtension, R, C>;
 
@@ -116,7 +118,7 @@ pub trait AuthClient: ExtensionClient<AuthExtension> {
         id: I,
         pin: Pin,
         retries: Option<u8>,
-        derive_key: bool,
+        derive_key: Option<DerivedKeyMechanism>,
     ) -> AuthResult<'_, reply::SetPin, Self> {
         self.extension(request::SetPin {
             id: id.into(),

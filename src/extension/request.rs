@@ -53,7 +53,7 @@ impl From<GetApplicationKey> for AuthRequest {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum DerivedKeyMechanism {
     Chacha8Poly1305,
     X25519,
@@ -65,7 +65,7 @@ pub struct SetPin {
     pub pin: Pin,
     pub retries: Option<u8>,
     /// If `Some`, the PIN can be used to wrap/unwrap a PIN key
-    pub derive_key: bool,
+    pub derive_key: Option<DerivedKeyMechanism>,
 }
 
 impl From<SetPin> for AuthRequest {

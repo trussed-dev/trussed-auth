@@ -25,7 +25,7 @@ use crate::{
     extension::{reply, AuthExtension, AuthReply, AuthRequest},
     BACKEND_DIR,
 };
-use data::{PinData, Salt, CHACHA_KEY_LEN, SALT_LEN};
+use data::{DeriveKey, PinData, Salt, CHACHA_KEY_LEN, SALT_LEN};
 
 use self::data::{delete_app_salt, ChachaKey};
 
@@ -276,17 +276,19 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 Ok(reply::ChangePin { success }.into())
             }
             AuthRequest::SetPin(request) => {
-                let maybe_app_key = if request.derive_key {
-                    Some(self.get_app_key(client_id, global_fs, ctx, rng)?)
-                } else {
-                    None
+                let key_derivation = match request.derive_key {
+                    Some(key_type) => Some(DeriveKey {
+                        application_key: self.get_app_key(client_id, global_fs, ctx, rng)?,
+                        key_type,
+                    }),
+                    None => None,
                 };
                 PinData::new(
                     request.id,
                     &request.pin,
                     request.retries,
                     rng,
-                    maybe_app_key.as_ref(),
+                    key_derivation,
                 )
                 .save(fs, self.location)?;
                 Ok(reply::SetPin.into())
