@@ -7,6 +7,7 @@ use core::fmt;
 
 use hkdf::Hkdf;
 use rand_core::{CryptoRng, RngCore};
+use salty::agreement::SecretKey;
 use sha2::Sha256;
 use trussed::{
     backend::Backend,
@@ -27,7 +28,7 @@ use crate::{
 };
 use data::{DeriveKey, PinData, Salt, CHACHA_KEY_LEN, SALT_LEN};
 
-use self::data::{delete_app_salt, ChachaKey};
+use self::data::{delete_app_salt, ChachaKey, DecryptedKey};
 
 /// max accepted length for the hardware initial key material
 pub const MAX_HW_KEY_LEN: usize = 64;
@@ -295,11 +296,15 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
             }
             AuthRequest::SetPinWithKey(request) => {
                 let app_key = self.get_app_key(client_id, global_fs, ctx, rng)?;
-                let key_to_wrap =
-                    keystore.load_key(Secrecy::Secret, Some(Kind::Symmetric(32)), &request.key)?;
-                let key_to_wrap = (&*key_to_wrap.material)
+                let key_material = keystore.load_key(Secrecy::Secret, None, &request.key)?;
+                let material_32: [u8; 32] = (&*key_material.material)
                     .try_into()
                     .map_err(|_| Error::ReadFailed)?;
+                let key_to_wrap = match key_material.kind {
+                    Kind::Symmetric(32) => DecryptedKey::Chacha20Poly1305(material_32.into()),
+                    Kind::X255 => DecryptedKey::X25519(SecretKey::from_seed(&material_32)),
+                    _ => return Err(Error::NotFound)?,
+                };
                 PinData::reset_with_key(
                     request.id,
                     &request.pin,

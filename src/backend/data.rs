@@ -3,7 +3,7 @@
 
 use core::ops::Deref;
 
-use chacha20poly1305::ChaCha8Poly1305;
+use chacha20poly1305::{AeadInPlace, ChaCha8Poly1305, KeyInit};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use serde_byte_array::ByteArray;
@@ -32,7 +32,7 @@ pub(crate) type Salt = ByteArray<SALT_LEN>;
 pub(crate) type Hash = ByteArray<HASH_LEN>;
 pub(crate) type ChaChaTag = ByteArray<CHACHA_TAG_LEN>;
 pub(crate) type ChachaKey = ByteArray<CHACHA_KEY_LEN>;
-pub(crate) type X25519Key = [u8; X25519_KEY_LEN];
+pub(crate) type X25519Key = ByteArray<X25519_KEY_LEN>;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Key {
@@ -49,7 +49,7 @@ impl Serialize for Key {
             Key::Chacha20Poly1305(k) => serializer.serialize_bytes(&**k),
             Key::X25519(k) => {
                 let mut encoded = [0; ENCODED_X25519_KEY_LEN];
-                encoded[0..X25519_KEY_LEN].copy_from_slice(&*k);
+                encoded[0..X25519_KEY_LEN].copy_from_slice(&**k);
                 serializer.serialize_bytes(&encoded)
             }
         }
@@ -75,9 +75,11 @@ impl<'de> Deserialize<'de> for Key {
             {
                 match v.len() {
                     CHACHA_KEY_LEN => Ok(Key::Chacha20Poly1305(ByteArray::new(
+                        #[allow(clippy::expect_used)]
                         v.try_into().expect("Len was just checked"),
                     ))),
                     ENCODED_X25519_KEY_LEN if v[X25519_KEY_LEN] == 0 => Ok(Key::X25519(
+                        #[allow(clippy::expect_used)]
                         v[..X25519_KEY_LEN]
                             .try_into()
                             .expect("Len was just checked"),
@@ -109,6 +111,47 @@ impl DecryptedKey {
             DecryptedKey::Chacha20Poly1305(k) => (*k).into(),
             DecryptedKey::X25519(k) => k.to_bytes(),
         }
+    }
+
+    pub fn aad(&self, id: PinId) -> Bytes<2> {
+        let mut aad = Bytes::new();
+        #[allow(clippy::expect_used)]
+        aad.push(u8::from(id))
+            .expect("Capacity is known to be 2 and length is known to be 0");
+        match self {
+            DecryptedKey::Chacha20Poly1305(_) => {}
+            DecryptedKey::X25519(_) =>
+            {
+                #[allow(clippy::expect_used)]
+                aad.push(0x00)
+                    .expect("Capacity is known to be 2 and length is known to be 1")
+            }
+        }
+        aad
+    }
+
+    pub fn encrypt(&self, id: PinId, pin_key: &ChachaKey) -> (Key, ChaChaTag) {
+        let aad = self.aad(id);
+        // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
+        // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
+
+        let nonce = Default::default();
+        let mut data = self.data();
+
+        let aead = ChaCha8Poly1305::new((&**pin_key).into());
+
+        #[allow(clippy::expect_used)]
+        let tag: [u8; CHACHA_TAG_LEN] = aead
+            .encrypt_in_place_detached(&nonce, &aad, &mut data)
+            .expect("Wrapping the key should always work, length are acceptable")
+            .into();
+
+        let key = match self {
+            DecryptedKey::Chacha20Poly1305(_) => Key::Chacha20Poly1305(data.into()),
+            DecryptedKey::X25519(_) => Key::X25519(data.into()),
+        };
+
+        (key, tag.into())
     }
 }
 
@@ -270,7 +313,7 @@ impl PinData {
                 );
 
                 KeyOrHash::Key(WrappedKeyData {
-                    wrapped_key: Key::X25519(key_bytes),
+                    wrapped_key: Key::X25519(key_bytes.into()),
                     tag: tag.into(),
                 })
             }
@@ -289,30 +332,21 @@ impl PinData {
         retries: Option<u8>,
         rng: &mut R,
         application_key: &ChachaKey,
-        mut key_to_wrap: ChachaKey,
+        key_to_wrap: DecryptedKey,
     ) -> Self
     where
         R: CryptoRng + RngCore,
     {
-        use chacha20poly1305::{AeadInPlace, KeyInit};
         let mut salt = Salt::default();
         rng.fill_bytes(salt.as_mut());
         let pin_key = derive_key(id, pin, &salt, application_key);
-        let aead = ChaCha8Poly1305::new((&*pin_key).into());
-        let nonce = Default::default();
-        #[allow(clippy::expect_used)]
-        let tag: [u8; CHACHA_TAG_LEN] = aead
-            .encrypt_in_place_detached(&nonce, &[u8::from(id)], &mut *key_to_wrap)
-            .expect("Wrapping the key should always work, length are acceptable")
-            .into();
+
+        let (wrapped_key, tag) = key_to_wrap.encrypt(id, &pin_key);
         Self {
             id,
             retries: retries.map(From::from),
             salt,
-            data: KeyOrHash::Key(WrappedKeyData {
-                wrapped_key: Key::Chacha20Poly1305(key_to_wrap),
-                tag: tag.into(),
-            }),
+            data: KeyOrHash::Key(WrappedKeyData { wrapped_key, tag }),
         }
     }
 
@@ -443,8 +477,6 @@ impl<'a> PinDataMut<'a> {
         mut wrapped_key: Key,
         tag: &ChaChaTag,
     ) -> Option<DecryptedKey> {
-        use chacha20poly1305::{AeadInPlace, KeyInit};
-
         let pin_key = derive_key(self.id, pin, &self.salt, application_key);
         let aead = ChaCha8Poly1305::new((&*pin_key).into());
         // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
@@ -460,7 +492,7 @@ impl<'a> PinDataMut<'a> {
             }
             Key::X25519(k) => {
                 aad_2 = [u8::from(self.data.id), 0];
-                (&aad_2, *k)
+                (&aad_2, **k)
             }
         };
 
@@ -508,45 +540,13 @@ impl<'a> PinDataMut<'a> {
         application_key: &ChachaKey,
         rng: &mut R,
     ) {
-        use chacha20poly1305::{AeadInPlace, KeyInit};
         let mut salt = Salt::default();
         rng.fill_bytes(&mut *salt);
 
         let pin_key = derive_key(self.id, new, &salt, application_key);
 
-        let aead = ChaCha8Poly1305::new((&*pin_key).into());
-        // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
-        // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
-        let nonce = Default::default();
-
-        let data = match old_key {
-            DecryptedKey::Chacha20Poly1305(mut k) => {
-                #[allow(clippy::expect_used)]
-                let tag: [u8; CHACHA_TAG_LEN] = aead
-                    .encrypt_in_place_detached(&nonce, &[u8::from(self.id)], &mut *k)
-                    .expect("Wrapping the key should always work, length are acceptable")
-                    .into();
-
-                KeyOrHash::Key(WrappedKeyData {
-                    wrapped_key: Key::Chacha20Poly1305(k),
-                    tag: tag.into(),
-                })
-            }
-            DecryptedKey::X25519(k) => {
-                let mut data = k.to_bytes();
-                #[allow(clippy::expect_used)]
-                let tag: [u8; CHACHA_TAG_LEN] = aead
-                    .encrypt_in_place_detached(&nonce, &[u8::from(self.id), 0], &mut data)
-                    .expect("Wrapping the key should always work, length are acceptable")
-                    .into();
-
-                KeyOrHash::Key(WrappedKeyData {
-                    wrapped_key: Key::X25519(data),
-                    tag: tag.into(),
-                })
-            }
-        };
-
+        let (wrapped_key, tag) = old_key.encrypt(self.id, &pin_key);
+        let data = KeyOrHash::Key(WrappedKeyData { wrapped_key, tag });
         *self.data = PinData {
             id: self.id,
             retries: self.retries,
@@ -628,8 +628,8 @@ fn hash(id: PinId, pin: &Pin, salt: &Salt) -> Hash {
 
 fn derive_key(id: PinId, pin: &Pin, salt: &Salt, application_key: &[u8; 32]) -> Hash {
     #[allow(clippy::expect_used)]
-    let mut hmac = Hmac::<Sha256>::new_from_slice(application_key)
-        .expect("Slice will always be of acceptable size");
+    let mut hmac: Hmac<Sha256> =
+        Mac::new_from_slice(application_key).expect("Hmac is compatible with all key sizes");
     hmac.update(&[u8::from(id)]);
     hmac.update(&[pin_len(pin)]);
     hmac.update(pin);
@@ -646,8 +646,7 @@ fn encrypt_pin_data(
     data: &mut [u8],
     aad: Option<[u8; 1]>,
 ) -> [u8; CHACHA_TAG_LEN] {
-    use chacha20poly1305::{AeadInPlace, KeyInit};
-    let pin_key = derive_key(id, pin, &salt, application_key);
+    let pin_key = derive_key(id, pin, salt, application_key);
     let aead = ChaCha8Poly1305::new((&*pin_key).into());
     // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
     // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
@@ -728,8 +727,8 @@ fn load_app_salt<S: Filestore>(fs: &mut S, location: Location) -> Result<Salt, E
 
 pub fn expand_app_key(salt: &Salt, application_key: &ChachaKey, info: &[u8]) -> ChachaKey {
     #[allow(clippy::expect_used)]
-    let mut hmac = Hmac::<Sha256>::new_from_slice(&**application_key)
-        .expect("Slice will always be of acceptable size");
+    let mut hmac: Hmac<Sha256> =
+        Mac::new_from_slice(&**application_key).expect("Hmac is compatible with all key sizes");
     hmac.update(&**salt);
     hmac.update(&(info.len() as u64).to_be_bytes());
     hmac.update(info);
