@@ -106,24 +106,30 @@ pub(crate) type Key = ByteArray<KEY_LEN>;
 ///     to_presistent_storage(salt, wrapped_key);
 /// }
 /// ````
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 struct WrappedKeyData {
+    #[serde(rename = "w", alias = "wrapped_key")]
     wrapped_key: Key,
+    #[serde(rename = "t", alias = "tag")]
     tag: ChaChaTag,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+// No need for using SerializeIndexed, cbor_smol already does it for enums
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 enum KeyOrHash {
     Key(WrappedKeyData),
     Hash(Hash),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct PinData {
     #[serde(skip)]
     id: PinId,
+    #[serde(rename = "r", alias = "retries")]
     retries: Option<Retries>,
+    #[serde(rename = "s", alias = "salt")]
     salt: Salt,
+    #[serde(rename = "d", alias = "data")]
     data: KeyOrHash,
 }
 
@@ -438,9 +444,11 @@ impl Deref for PinDataMut<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 struct Retries {
+    #[serde(rename = "m", alias = "max")]
     max: u8,
+    #[serde(rename = "l", alias = "left")]
     left: u8,
 }
 
@@ -579,5 +587,188 @@ mod tests {
         let salt = Salt::from([u8::MAX; SALT_LEN]);
         let serialized = trussed::cbor_serialize_bytes::<_, 1024>(&salt).unwrap();
         assert!(serialized.len() <= SALT_LEN + 1, "{}", serialized.len());
+    }
+
+    #[test]
+    fn index_serialization() {
+        use serde_test::{assert_de_tokens, assert_tokens, Token};
+
+        let data = PinData {
+            id: PinId::from(0),
+            retries: None,
+            salt: [0xFE; SALT_LEN].into(),
+            data: KeyOrHash::Hash([0xED; HASH_LEN].into()),
+        };
+
+        assert_tokens(
+            &data,
+            &[
+                Token::Struct {
+                    name: "PinData",
+                    len: 3,
+                },
+                Token::Str("r"),
+                Token::None,
+                Token::Str("s"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("d"),
+                Token::NewtypeVariant {
+                    name: "KeyOrHash",
+                    variant: "Hash",
+                },
+                Token::Bytes(&[0xED; HASH_LEN]),
+                Token::StructEnd,
+            ],
+        );
+
+        assert_de_tokens(
+            &data,
+            &[
+                Token::Map { len: Some(3) },
+                Token::Str("retries"),
+                Token::None,
+                Token::Str("salt"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("data"),
+                Token::Enum { name: "KeyOrHash" },
+                Token::U64(1),
+                Token::Bytes(&[0xED; HASH_LEN]),
+                Token::MapEnd,
+            ],
+        );
+
+        let data = PinData {
+            id: PinId::from(0),
+            retries: Some(Retries { max: 3, left: 2 }),
+            salt: [0xFE; SALT_LEN].into(),
+            data: KeyOrHash::Hash([0xDE; HASH_LEN].into()),
+        };
+
+        assert_tokens(
+            &data,
+            &[
+                Token::Struct {
+                    name: "PinData",
+                    len: 3,
+                },
+                Token::Str("r"),
+                Token::Some,
+                Token::Struct {
+                    name: "Retries",
+                    len: 2,
+                },
+                Token::Str("m"),
+                Token::U8(3),
+                Token::Str("l"),
+                Token::U8(2),
+                Token::StructEnd,
+                Token::Str("s"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("d"),
+                Token::NewtypeVariant {
+                    name: "KeyOrHash",
+                    variant: "Hash",
+                },
+                Token::Bytes(&[0xDE; HASH_LEN]),
+                Token::StructEnd,
+            ],
+        );
+
+        assert_de_tokens(
+            &data,
+            &[
+                Token::Map { len: Some(3) },
+                Token::Str("retries"),
+                Token::Some,
+                Token::Map { len: Some(2) },
+                Token::Str("left"),
+                Token::U8(2),
+                Token::Str("max"),
+                Token::U8(3),
+                Token::MapEnd,
+                Token::Str("salt"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("data"),
+                Token::Enum { name: "KeyOrHash" },
+                Token::U64(1),
+                Token::Bytes(&[0xDE; HASH_LEN]),
+                Token::MapEnd,
+            ],
+        );
+
+        let data = PinData {
+            id: PinId::from(0),
+            retries: Some(Retries { max: 3, left: 2 }),
+            salt: [0xFE; SALT_LEN].into(),
+            data: KeyOrHash::Key(WrappedKeyData {
+                wrapped_key: [0xED; KEY_LEN].into(),
+                tag: [0xDC; CHACHA_TAG_LEN].into(),
+            }),
+        };
+
+        assert_tokens(
+            &data,
+            &[
+                Token::Struct {
+                    name: "PinData",
+                    len: 3,
+                },
+                Token::Str("r"),
+                Token::Some,
+                Token::Struct {
+                    name: "Retries",
+                    len: 2,
+                },
+                Token::Str("m"),
+                Token::U8(3),
+                Token::Str("l"),
+                Token::U8(2),
+                Token::StructEnd,
+                Token::Str("s"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("d"),
+                Token::NewtypeVariant {
+                    name: "KeyOrHash",
+                    variant: "Key",
+                },
+                Token::Struct {
+                    name: "WrappedKeyData",
+                    len: 2,
+                },
+                Token::Str("w"),
+                Token::Bytes(&[0xED; KEY_LEN]),
+                Token::Str("t"),
+                Token::Bytes(&[0xDC; CHACHA_TAG_LEN]),
+                Token::StructEnd,
+                Token::StructEnd,
+            ],
+        );
+
+        assert_de_tokens(
+            &data,
+            &[
+                Token::Map { len: Some(3) },
+                Token::Str("retries"),
+                Token::Some,
+                Token::Map { len: Some(2) },
+                Token::Str("left"),
+                Token::U8(2),
+                Token::Str("max"),
+                Token::U8(3),
+                Token::MapEnd,
+                Token::Str("salt"),
+                Token::Bytes(&[0xFE; SALT_LEN]),
+                Token::Str("data"),
+                Token::Enum { name: "KeyOrHash" },
+                Token::U64(0),
+                Token::Map { len: Some(2) },
+                Token::Str("wrapped_key"),
+                Token::Bytes(&[0xED; KEY_LEN]),
+                Token::Str("tag"),
+                Token::Bytes(&[0xDC; CHACHA_TAG_LEN]),
+                Token::MapEnd,
+                Token::MapEnd,
+            ],
+        );
     }
 }
