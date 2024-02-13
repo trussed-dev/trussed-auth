@@ -24,8 +24,13 @@ trussed = { version = "0.1.0", features = ["serde-extensions"] }
 [dev-dependencies]
 quickcheck = { version = "1.0.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
+serde_test = "1.0.176"
 trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
+serde_cbor = { version = "0.11.2", features = ["std"] }
+hex-literal = "0.4.1"
 
 [patch.crates-io]
-littlefs2 = { git =  "https://github.com/Nitrokey/littlefs2", tag = "v0.3.2-nitrokey-2" }
-trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "df720980888e3e0d5487250bd14a28db02a5f13b" }
+littlefs2 = { git = "https://github.com/trussed-dev/littlefs2", rev = "ebd27e49ca321089d01d8c9b169c4aeb58ceeeca" }
+trussed = { git = "https://github.com/Nitrokey/trussed.git", tag = "v0.1.0-nitrokey.17" }
+serde-indexed = { git = "https://github.com/nitrokey/serde-indexed.git", rev = "37ba220526961fb8ba067d3fa18ee620337bb73b" }
+cbor-smol = { git = "https://github.com/sosthene-nitrokey/cbor-smol.git", rev = "327f723d53263d4ac1da368660de4fe4aa8ebef8" }
