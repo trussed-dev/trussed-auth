@@ -25,8 +25,11 @@ littlefs2 = "0.4.0"
 [dev-dependencies]
 quickcheck = { version = "1.0.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
+serde_test = "1.0.176"
 trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
 admin-app = { version = "0.1.0", features = ["migration-tests"] }
+serde_cbor = { version = "0.11.2", features = ["std"] }
+hex-literal = "0.4.1"
 
 [patch.crates-io]
 littlefs2 = { git = "https://github.com/sosthene-nitrokey/littlefs2.git", rev = "2b45a7559ff44260c6dd693e4cb61f54ae5efc53" }
@@ -35,3 +38,4 @@ trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", t
 apdu-dispatch = { git = "https://github.com/trussed-dev/apdu-dispatch.git", rev = "915fc237103fcecc29d0f0b73391f19abf6576de" }
 ctaphid-dispatch = { git = "https://github.com/trussed-dev/ctaphid-dispatch.git", rev = "57cb3317878a8593847595319aa03ef17c29ec5b" }
 admin-app = { git = "https://github.com/Nitrokey/admin-app.git", tag = "v0.1.0-nitrokey.12" }
+cbor-smol = { git = "https://github.com/Nitrokey/cbor-smol.git", tag = "v0.4.0-nitrokey.2" }
