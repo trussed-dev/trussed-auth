@@ -63,6 +63,8 @@
 mod backend;
 mod extension;
 
+pub mod migrate;
+
 use core::str::FromStr;
 
 use serde::{Deserialize, Serialize};
