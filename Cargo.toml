@@ -27,5 +27,5 @@ rand_core = { version = "0.6.4", default-features = false, features = ["getrando
 trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
 
 [patch.crates-io]
-littlefs2 = { git =  "https://github.com/Nitrokey/littlefs2", tag = "v0.3.2-nitrokey-2" }
-trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "df720980888e3e0d5487250bd14a28db02a5f13b" }
+littlefs2 = { git = "https://github.com/sosthene-nitrokey/littlefs2.git", rev = "2b45a7559ff44260c6dd693e4cb61f54ae5efc53" }
+trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "011c0578fc9803999ed871f447c21bac4291cbee" }
