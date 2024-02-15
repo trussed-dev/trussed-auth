@@ -44,11 +44,12 @@ fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
 /// ```
 pub fn migrate(fs: &dyn DynFilesystem, apps: &[&Path]) -> Result<(), Error> {
     for p in once(&path!("/")).chain(apps) {
-        migrate_single(fs, *p)?;
+        migrate_single(fs, p)?;
     }
     Ok(())
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use littlefs2::{fs::Filesystem, ram_storage};
@@ -81,12 +82,12 @@ mod tests {
     fn test_fs_equality(fs: &dyn DynFilesystem, value: &FsValues, path: &Path) {
         match value {
             FsValues::Dir(d) => {
-                let mut expected_iter = d.into_iter();
+                let mut expected_iter = d.iter();
                 fs.read_dir_and_then(path, &mut |dir| {
                     // skip . and ..
                     dir.next().unwrap().unwrap();
                     dir.next().unwrap().unwrap();
-                    while let Some((expected_path, expected_values)) = expected_iter.next() {
+                    for (expected_path, expected_values) in expected_iter.by_ref() {
                         let entry = dir.next().unwrap().unwrap();
                         assert_eq!(entry.file_name(), *expected_path);
                         test_fs_equality(fs, expected_values, &path.join(expected_path));
