@@ -29,6 +29,19 @@ fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
 /// `apps` must be an array of paths to the apps that make use of trussed-auth
 ///
 /// Migrate does not itself keep track of whether the migration was performed
+///
+/// ```rust
+///# use littlefs2::{fs::Filesystem, const_ram_storage, path};
+///# use trussed::types::{LfsResult, LfsStorage};
+///# use trussed_auth::migrate::migrate;
+///# const_ram_storage!(Storage, 4096);
+///# let mut storage = Storage::new();
+///# Filesystem::format(&mut storage);
+///# Filesystem::mount_and_then(&mut storage, |fs| {
+/// migrate(fs, &[path!("secrets"), path!("opcard")])?;
+///#     Ok(())
+///# }).unwrap();
+/// ```
 pub fn migrate(fs: &dyn DynFilesystem, apps: &[&Path]) -> Result<(), Error> {
     for p in once(&path!("/")).chain(apps) {
         migrate_single(fs, *p)?;
