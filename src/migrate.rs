@@ -1,3 +1,6 @@
+// Copyright (C) Nitrokey GmbH
+// SPDX-License-Identifier: Apache-2.0 or MIT
+
 //! Helper to migrate from trussed-auth's legacy data layout to the new layout
 //!
 //! See [migrate]()
