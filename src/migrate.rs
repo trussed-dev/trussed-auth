@@ -82,6 +82,26 @@ mod tests {
         File(usize),
     }
 
+    fn prepare_fs(fs: &dyn DynFilesystem, value: &FsValues, path: &Path) {
+        match value {
+            FsValues::File(f_data_len) => {
+                fs.create_file_and_then(path, &mut |f| {
+                    f.set_len(*f_data_len).unwrap();
+                    Ok(())
+                })
+                .unwrap();
+            }
+            FsValues::Dir(d) => {
+                if path != path!("/") {
+                    fs.create_dir(path).unwrap();
+                }
+                for (p, v) in *d {
+                    prepare_fs(fs, v, &path.join(p));
+                }
+            }
+        }
+    }
+
     fn test_fs_equality(fs: &dyn DynFilesystem, value: &FsValues, path: &Path) {
         match value {
             FsValues::Dir(d) => {
@@ -158,9 +178,7 @@ mod tests {
 
     #[test]
     fn migration_nothing() {
-        let mut storage = RamDirect {
-            buf: *include_bytes!("../test_fs/fido-trussed.lfs"),
-        };
+        let mut storage = RamDirect::default();
 
         const TEST_VALUES: FsValues = FsValues::Dir(&[
             (
@@ -176,9 +194,13 @@ mod tests {
             ),
         ]);
 
-        Filesystem::mount_and_then(&mut NoBackendStorage::new(&mut storage), |fs| {
+        let backend = &mut NoBackendStorage::new(&mut storage);
+
+        Filesystem::format(backend).unwrap();
+        Filesystem::mount_and_then(backend, |fs| {
+            prepare_fs(fs, &TEST_VALUES, path!("/"));
             test_fs_equality(fs, &TEST_VALUES, path!("/"));
-            migrate_remove_dat(fs, &[path!("fido")]).unwrap();
+            migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")]).unwrap();
             test_fs_equality(fs, &TEST_VALUES, path!("/"));
             Ok(())
         })
@@ -187,9 +209,7 @@ mod tests {
 
     #[test]
     fn migration_full() {
-        let mut storage = RamDirect {
-            buf: *include_bytes!("../test_fs/fido-trussed-auth.lfs"),
-        };
+        let mut storage = RamDirect::default();
 
         const AUTH_SECRETS_DIR: FsValues = FsValues::Dir(&[
             (path!("application_salt"), FsValues::File(16)),
@@ -246,7 +266,11 @@ mod tests {
             ),
         ]);
 
-        Filesystem::mount_and_then(&mut NoBackendStorage::new(&mut storage), |fs| {
+        let backend = &mut NoBackendStorage::new(&mut storage);
+
+        Filesystem::format(backend).unwrap();
+        Filesystem::mount_and_then(backend, |fs| {
+            prepare_fs(fs, &TEST_BEFORE, path!("/"));
             test_fs_equality(fs, &TEST_BEFORE, path!("/"));
             migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")]).unwrap();
             test_fs_equality(fs, &TEST_AFTER, path!("/"));
