@@ -55,82 +55,9 @@ pub fn migrate_remove_dat(fs: &dyn DynFilesystem, apps: &[&Path]) -> Result<(), 
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
-    use littlefs2::{fs::Filesystem, ram_storage};
+    use trussed_staging::manage::test_utils::{test_migration_one, FsValues};
 
     use super::*;
-
-    type Result<T, E = Error> = core::result::Result<T, E>;
-
-    ram_storage!(
-        name=NoBackendStorage,
-        backend=RamDirect,
-        trait=littlefs2::driver::Storage,
-        erase_value=0xff,
-        read_size=16,
-        write_size=16,
-        cache_size_ty=littlefs2::consts::U512,
-        block_size=512,
-        block_count=128,
-        lookahead_size_ty=littlefs2::consts::U8,
-        filename_max_plus_one_ty=littlefs2::consts::U256,
-        path_max_plus_one_ty=littlefs2::consts::U256,
-        result=Result,
-    );
-
-    enum FsValues {
-        Dir(&'static [(&'static Path, FsValues)]),
-        File(usize),
-    }
-
-    fn prepare_fs(fs: &dyn DynFilesystem, value: &FsValues, path: &Path) {
-        match value {
-            FsValues::File(f_data_len) => {
-                fs.create_file_and_then(path, &mut |f| {
-                    f.set_len(*f_data_len).unwrap();
-                    Ok(())
-                })
-                .unwrap();
-            }
-            FsValues::Dir(d) => {
-                if path != path!("/") {
-                    fs.create_dir(path).unwrap();
-                }
-                for (p, v) in *d {
-                    prepare_fs(fs, v, &path.join(p));
-                }
-            }
-        }
-    }
-
-    fn test_fs_equality(fs: &dyn DynFilesystem, value: &FsValues, path: &Path) {
-        match value {
-            FsValues::Dir(d) => {
-                let mut expected_iter = d.iter();
-                fs.read_dir_and_then(path, &mut |dir| {
-                    // skip . and ..
-                    dir.next().unwrap().unwrap();
-                    dir.next().unwrap().unwrap();
-                    for (expected_path, expected_values) in expected_iter.by_ref() {
-                        let entry = dir.next().unwrap().unwrap();
-                        assert_eq!(entry.file_name(), *expected_path);
-                        test_fs_equality(fs, expected_values, &path.join(expected_path));
-                    }
-                    assert!(dir.next().is_none());
-                    Ok(())
-                })
-                .unwrap();
-            }
-            FsValues::File(f_data_len) => {
-                fs.open_file_and_then(path, &mut |f| {
-                    let mut buf = [0; 512];
-                    let data = f.read(&mut buf).unwrap();
-                    assert_eq!(data, *f_data_len);
-                    Ok(())
-                })
-                .unwrap();
-            }
-        }
-    }
 
     const FIDO_DAT_DIR: FsValues = FsValues::Dir(&[
         (path!("persistent-state.cbor"), FsValues::File(137)),
@@ -178,8 +105,6 @@ mod tests {
 
     #[test]
     fn migration_nothing() {
-        let mut storage = RamDirect::default();
-
         const TEST_VALUES: FsValues = FsValues::Dir(&[
             (
                 path!("fido"),
@@ -193,24 +118,13 @@ mod tests {
                 )]),
             ),
         ]);
-
-        let backend = &mut NoBackendStorage::new(&mut storage);
-
-        Filesystem::format(backend).unwrap();
-        Filesystem::mount_and_then(backend, |fs| {
-            prepare_fs(fs, &TEST_VALUES, path!("/"));
-            test_fs_equality(fs, &TEST_VALUES, path!("/"));
-            migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")]).unwrap();
-            test_fs_equality(fs, &TEST_VALUES, path!("/"));
-            Ok(())
-        })
-        .unwrap();
+        test_migration_one(&TEST_VALUES, &TEST_VALUES, |fs| {
+            migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")])
+        });
     }
 
     #[test]
     fn migration_full() {
-        let mut storage = RamDirect::default();
-
         const AUTH_SECRETS_DIR: FsValues = FsValues::Dir(&[
             (path!("application_salt"), FsValues::File(16)),
             (path!("pin.00"), FsValues::File(118)),
@@ -266,16 +180,8 @@ mod tests {
             ),
         ]);
 
-        let backend = &mut NoBackendStorage::new(&mut storage);
-
-        Filesystem::format(backend).unwrap();
-        Filesystem::mount_and_then(backend, |fs| {
-            prepare_fs(fs, &TEST_BEFORE, path!("/"));
-            test_fs_equality(fs, &TEST_BEFORE, path!("/"));
-            migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")]).unwrap();
-            test_fs_equality(fs, &TEST_AFTER, path!("/"));
-            Ok(())
-        })
-        .unwrap();
+        test_migration_one(&TEST_BEFORE, &TEST_AFTER, |fs| {
+            migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")])
+        });
     }
 }
