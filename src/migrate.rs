@@ -36,16 +36,16 @@ fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
 /// ```rust
 ///# use littlefs2::{fs::Filesystem, const_ram_storage, path};
 ///# use trussed::types::{LfsResult, LfsStorage};
-///# use trussed_auth::migrate::migrate;
+///# use trussed_auth::migrate::migrate_remove_dat;
 ///# const_ram_storage!(Storage, 4096);
 ///# let mut storage = Storage::new();
 ///# Filesystem::format(&mut storage);
 ///# Filesystem::mount_and_then(&mut storage, |fs| {
-/// migrate(fs, &[path!("secrets"), path!("opcard")])?;
+/// migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")])?;
 ///#     Ok(())
 ///# }).unwrap();
 /// ```
-pub fn migrate(fs: &dyn DynFilesystem, apps: &[&Path]) -> Result<(), Error> {
+pub fn migrate_remove_dat(fs: &dyn DynFilesystem, apps: &[&Path]) -> Result<(), Error> {
     for p in once(&path!("/")).chain(apps) {
         migrate_single(fs, p)?;
     }
@@ -178,7 +178,7 @@ mod tests {
 
         Filesystem::mount_and_then(&mut NoBackendStorage::new(&mut storage), |fs| {
             test_fs_equality(fs, &TEST_VALUES, path!("/"));
-            migrate(fs, &[path!("fido")]).unwrap();
+            migrate_remove_dat(fs, &[path!("fido")]).unwrap();
             test_fs_equality(fs, &TEST_VALUES, path!("/"));
             Ok(())
         })
@@ -248,7 +248,7 @@ mod tests {
 
         Filesystem::mount_and_then(&mut NoBackendStorage::new(&mut storage), |fs| {
             test_fs_equality(fs, &TEST_BEFORE, path!("/"));
-            migrate(fs, &[path!("secrets"), path!("opcard")]).unwrap();
+            migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")]).unwrap();
             test_fs_equality(fs, &TEST_AFTER, path!("/"));
             Ok(())
         })
