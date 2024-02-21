@@ -184,4 +184,24 @@ mod tests {
             migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")])
         });
     }
+
+    #[test]
+    fn migration_empty() {
+        const TEST_VALUES: FsValues = FsValues::Dir(&[
+            (
+                path!("fido"),
+                FsValues::Dir(&[(path!("dat"), FIDO_DAT_DIR), (path!("sec"), FIDO_SEC_DIR)]),
+            ),
+            (
+                path!("trussed"),
+                FsValues::Dir(&[(
+                    path!("dat"),
+                    FsValues::Dir(&[(path!("rng-state.bin"), FsValues::File(32))]),
+                )]),
+            ),
+        ]);
+        test_migration_one(&TEST_VALUES, &TEST_VALUES, |fs| {
+            migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")])
+        });
+    }
 }
