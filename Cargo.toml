@@ -30,5 +30,5 @@ trussed-staging = { version = "0.1.0", features = ["migration-tests"] }
 
 [patch.crates-io]
 littlefs2 = { git = "https://github.com/sosthene-nitrokey/littlefs2.git", rev = "2b45a7559ff44260c6dd693e4cb61f54ae5efc53" }
-trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "011c0578fc9803999ed871f447c21bac4291cbee" }
+trussed = { git = "https://github.com/Nitrokey/trussed.git", rev = "be04182e2c74e73599a394e814d353bc4bf79484" }
 trussed-staging = { git = "https://github.com/Nitrokey/trussed-staging.git", rev = "5f96a2fd6333c78b7ea0d6387b5f5c1a72c2ecd9" }
