@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased][]
 
+[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.3.0...HEAD
+
+## [0.3.0][] - 2024-03-22
+
+[0.3.0]: https://github.com/trussed-dev/trussed-auth/releases/tag/v0.3.0
+
 ### Breaking Changes
 
 - Add `delete_app_keys` and `delete_auth_keys` syscalls. ([#33][])
@@ -20,9 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `reset_auth_data` combines `delete_all_pins` and `delete_app_keys`
 
   Applications (trussed-secrets) relying on the old `delete_all_pins` behaviour will need to be fixed.
+- Update Trussed dependency ([#33][], [#35][], [#37][])
+
+### Added
+
+- Make more items public ([#36][])
 
 [#33]: https://github.com/trussed-dev/trussed-auth/pull/33
-[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.2.2...HEAD
+[#35]: https://github.com/trussed-dev/trussed-auth/pull/35
+[#36]: https://github.com/trussed-dev/trussed-auth/pull/36
+[#37]: https://github.com/trussed-dev/trussed-auth/pull/37
 
 ## [0.2.2][] - 2023-04-26
 
