@@ -21,14 +21,19 @@ sha2 = { version = "0.10.6", default-features = false }
 subtle = { version = "2.4.1", default-features = false }
 trussed = { version = "0.1.0", features = ["serde-extensions"] }
 littlefs2 = "0.4.0"
+admin-app = "0.1.0"
 
 [dev-dependencies]
 quickcheck = { version = "1.0.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
 trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
-trussed-staging = { version = "0.1.0", features = ["migration-tests"] }
+admin-app = { version = "0.1.0", features = ["migration-tests"] }
 
 [patch.crates-io]
 littlefs2 = { git = "https://github.com/sosthene-nitrokey/littlefs2.git", rev = "2b45a7559ff44260c6dd693e4cb61f54ae5efc53" }
 trussed = { git = "https://github.com/Nitrokey/trussed.git", rev = "be04182e2c74e73599a394e814d353bc4bf79484" }
-trussed-staging = { git = "https://github.com/Nitrokey/trussed-staging.git", rev = "5f96a2fd6333c78b7ea0d6387b5f5c1a72c2ecd9" }
+trussed-staging = { git = "https://github.com/trussed-dev/trussed-staging.git", tag = "v0.3.0" }
+trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", tag = "manage-v0.1.0" }
+apdu-dispatch = { git = "https://github.com/trussed-dev/apdu-dispatch.git", rev = "915fc237103fcecc29d0f0b73391f19abf6576de" }
+ctaphid-dispatch = { git = "https://github.com/trussed-dev/ctaphid-dispatch.git", rev = "57cb3317878a8593847595319aa03ef17c29ec5b" }
+admin-app = { git = "https://github.com/Nitrokey/admin-app.git", rev = "b2df7c068f889337eb57ce8646ded9418b5ec773" }
