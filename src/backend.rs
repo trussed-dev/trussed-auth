@@ -75,24 +75,28 @@ impl fmt::Debug for HardwareKey {
 pub struct AuthBackend {
     location: Location,
     hw_key: HardwareKey,
+    /// If true, get rid of the intermediary `dat` folder created by the filestore
+    use_raw: bool,
 }
 
 impl AuthBackend {
     /// Creates a new `AuthBackend` using the given storage location for the PINs.
-    pub fn new(location: Location) -> Self {
+    pub fn new(location: Location, use_raw: bool) -> Self {
         Self {
             location,
             hw_key: HardwareKey::None,
+            use_raw,
         }
     }
 
     /// Creates a new `AuthBackend` with a given key.
     ///
     /// This key is used to strengthen key generation from the pins
-    pub fn with_hw_key(location: Location, hw_key: Bytes<MAX_HW_KEY_LEN>) -> Self {
+    pub fn with_hw_key(location: Location, hw_key: Bytes<MAX_HW_KEY_LEN>, use_raw: bool) -> Self {
         Self {
             location,
             hw_key: HardwareKey::Raw(hw_key),
+            use_raw,
         }
     }
 
@@ -101,10 +105,11 @@ impl AuthBackend {
     /// Contrary to [`new`](Self::new) which uses a default `&[]` key, this will make operations depending on the hardware key to fail:
     /// - [`set_pin`](crate::AuthClient::set_pin) with `derive_key = true`
     /// - All operations on a pin that was created with `derive_key = true`
-    pub fn with_missing_hw_key(location: Location) -> Self {
+    pub fn with_missing_hw_key(location: Location, use_raw: bool) -> Self {
         Self {
             location,
             hw_key: HardwareKey::Missing,
+            use_raw,
         }
     }
 
@@ -215,8 +220,19 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
         // FIXME: Have a real implementation from trussed
         let mut backend_path = core_ctx.path.clone();
         backend_path.push(&PathBuf::from(BACKEND_DIR));
-        let fs = &mut resources.raw_filestore(backend_path);
-        let global_fs = &mut resources.raw_filestore(PathBuf::from(BACKEND_DIR));
+        let mut fs;
+        let mut global_fs;
+        if self.use_raw {
+            fs = resources.raw_filestore(backend_path);
+            global_fs = resources.raw_filestore(PathBuf::from(BACKEND_DIR));
+        } else {
+            fs = resources.filestore(backend_path);
+            global_fs = resources.filestore(PathBuf::from(BACKEND_DIR));
+        }
+
+        let fs = &mut fs;
+        let global_fs = &mut global_fs;
+
         let rng = &mut resources.rng()?;
         let client_id = core_ctx.path.clone();
         let keystore = &mut resources.keystore(core_ctx.path.clone())?;

@@ -55,18 +55,18 @@ mod dispatch {
     impl Dispatch {
         pub fn new() -> Self {
             Self {
-                auth: AuthBackend::new(Location::Internal),
+                auth: AuthBackend::new(Location::Internal, false),
             }
         }
 
         pub fn with_hw_key(hw_key: Bytes<MAX_HW_KEY_LEN>) -> Self {
             Self {
-                auth: AuthBackend::with_hw_key(Location::Internal, hw_key),
+                auth: AuthBackend::with_hw_key(Location::Internal, hw_key, false),
             }
         }
         pub fn with_missing_hw_key() -> Self {
             Self {
-                auth: AuthBackend::with_missing_hw_key(Location::Internal),
+                auth: AuthBackend::with_missing_hw_key(Location::Internal, false),
             }
         }
     }
