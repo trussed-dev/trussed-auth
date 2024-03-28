@@ -52,6 +52,15 @@ impl fmt::Debug for HardwareKey {
     }
 }
 
+/// Filesystem layout used
+#[derive(Debug, Clone)]
+pub enum FilesystemLayout {
+    /// The default layout
+    V0,
+    /// The optimized layout, requireing the [`migrate::migrate_remove_dat`]() migration
+    V1,
+}
+
 /// A basic implementation of the [`AuthExtension`][].
 ///
 /// This implementation stores PINs together with their retry counters on the filesystem.  PINs are
@@ -75,28 +84,31 @@ impl fmt::Debug for HardwareKey {
 pub struct AuthBackend {
     location: Location,
     hw_key: HardwareKey,
-    /// If true, get rid of the intermediary `dat` folder created by the filestore
-    use_raw: bool,
+    layout: FilesystemLayout,
 }
 
 impl AuthBackend {
     /// Creates a new `AuthBackend` using the given storage location for the PINs.
-    pub fn new(location: Location, use_raw: bool) -> Self {
+    pub fn new(location: Location, layout: FilesystemLayout) -> Self {
         Self {
             location,
             hw_key: HardwareKey::None,
-            use_raw,
+            layout,
         }
     }
 
     /// Creates a new `AuthBackend` with a given key.
     ///
     /// This key is used to strengthen key generation from the pins
-    pub fn with_hw_key(location: Location, hw_key: Bytes<MAX_HW_KEY_LEN>, use_raw: bool) -> Self {
+    pub fn with_hw_key(
+        location: Location,
+        hw_key: Bytes<MAX_HW_KEY_LEN>,
+        layout: FilesystemLayout,
+    ) -> Self {
         Self {
             location,
             hw_key: HardwareKey::Raw(hw_key),
-            use_raw,
+            layout,
         }
     }
 
@@ -105,11 +117,11 @@ impl AuthBackend {
     /// Contrary to [`new`](Self::new) which uses a default `&[]` key, this will make operations depending on the hardware key to fail:
     /// - [`set_pin`](crate::AuthClient::set_pin) with `derive_key = true`
     /// - All operations on a pin that was created with `derive_key = true`
-    pub fn with_missing_hw_key(location: Location, use_raw: bool) -> Self {
+    pub fn with_missing_hw_key(location: Location, layout: FilesystemLayout) -> Self {
         Self {
             location,
             hw_key: HardwareKey::Missing,
-            use_raw,
+            layout,
         }
     }
 
@@ -222,12 +234,15 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
         backend_path.push(&PathBuf::from(BACKEND_DIR));
         let mut fs;
         let mut global_fs;
-        if self.use_raw {
-            fs = resources.raw_filestore(backend_path);
-            global_fs = resources.raw_filestore(PathBuf::from(BACKEND_DIR));
-        } else {
-            fs = resources.filestore(backend_path);
-            global_fs = resources.filestore(PathBuf::from(BACKEND_DIR));
+        match self.layout {
+            FilesystemLayout::V0 => {
+                fs = resources.filestore(backend_path);
+                global_fs = resources.filestore(PathBuf::from(BACKEND_DIR));
+            }
+            FilesystemLayout::V1 => {
+                fs = resources.raw_filestore(backend_path);
+                global_fs = resources.raw_filestore(PathBuf::from(BACKEND_DIR));
+            }
         }
 
         let fs = &mut fs;

@@ -73,7 +73,7 @@ use trussed::{
     types::{Bytes, PathBuf},
 };
 
-pub use backend::{AuthBackend, AuthContext, MAX_HW_KEY_LEN};
+pub use backend::{AuthBackend, AuthContext, FilesystemLayout, MAX_HW_KEY_LEN};
 pub use extension::{
     reply, request, AuthClient, AuthExtension, AuthReply, AuthRequest, AuthResult,
 };
