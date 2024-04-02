@@ -1,34 +1,23 @@
 # Copyright (C) Nitrokey GmbH
 # SPDX-License-Identifier: CC0-1.0
 
-[package]
-name = "trussed-auth"
-version = "0.3.0"
+[workspace]
+members = ["backend", "extension"]
+resolver = "2"
+
+[workspace.package]
 authors = ["Nitrokey GmbH <info@nitrokey.com>"]
 edition = "2021"
-repository = "https://github.com/trussed-dev/trussed-auth"
 license = "Apache-2.0 OR MIT"
-description = "Authentication extension and backend for Trussed"
+repository = "https://github.com/trussed-dev/trussed-auth"
 
-[dependencies]
-chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["reduced-round"] }
-hkdf = "0.12.3"
-hmac = "0.12.1"
-rand_core = "0.6.4"
+[workspace.dependencies]
 serde = { version = "1", default-features = false }
-serde-byte-array = "0.1.2"
-sha2 = { version = "0.10.6", default-features = false }
-subtle = { version = "2.4.1", default-features = false }
 trussed = { version = "0.1.0", features = ["serde-extensions"] }
-littlefs2 = "0.4.0"
-
-[dev-dependencies]
-quickcheck = { version = "1.0.3", default-features = false }
-rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
-trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
-admin-app = { version = "0.1.0", features = ["migration-tests"] }
 
 [patch.crates-io]
+trussed-auth = { path = "extension" }
+
 littlefs2 = { git = "https://github.com/sosthene-nitrokey/littlefs2.git", rev = "2b45a7559ff44260c6dd693e4cb61f54ae5efc53" }
 trussed = { git = "https://github.com/Nitrokey/trussed.git", rev = "be04182e2c74e73599a394e814d353bc4bf79484" }
 trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", tag = "manage-v0.1.0" }

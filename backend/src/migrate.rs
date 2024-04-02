@@ -36,7 +36,7 @@ fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
 /// ```rust
 ///# use littlefs2::{fs::Filesystem, const_ram_storage, path};
 ///# use trussed::types::{LfsResult, LfsStorage};
-///# use trussed_auth::migrate::migrate_remove_dat;
+///# use trussed_auth_backend::migrate::migrate_remove_dat;
 ///# const_ram_storage!(Storage, 4096);
 ///# let mut storage = Storage::new();
 ///# Filesystem::format(&mut storage);
