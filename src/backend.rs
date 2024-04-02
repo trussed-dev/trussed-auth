@@ -7,6 +7,7 @@ use core::fmt;
 
 use hkdf::Hkdf;
 use rand_core::{CryptoRng, RngCore};
+use salty::agreement::SecretKey;
 use sha2::Sha256;
 use trussed::{
     backend::Backend,
@@ -25,9 +26,9 @@ use crate::{
     extension::{reply, AuthExtension, AuthReply, AuthRequest},
     BACKEND_DIR,
 };
-use data::{Key, PinData, Salt, KEY_LEN, SALT_LEN};
+use data::{DeriveKey, PinData, Salt, CHACHA_KEY_LEN, SALT_LEN};
 
-use self::data::delete_app_salt;
+use self::data::{delete_app_salt, ChachaKey, DecryptedKey};
 
 /// max accepted length for the hardware initial key material
 pub const MAX_HW_KEY_LEN: usize = 64;
@@ -149,8 +150,8 @@ impl AuthBackend {
         }
     }
 
-    fn expand(kdf: &Hkdf<Sha256>, client_id: &PathBuf) -> Key {
-        let mut out = Key::default();
+    fn expand(kdf: &Hkdf<Sha256>, client_id: &PathBuf) -> ChachaKey {
+        let mut out = ChachaKey::default();
         #[allow(clippy::expect_used)]
         kdf.expand(client_id.as_ref().as_bytes(), &mut *out)
             .expect("Out data is always valid");
@@ -162,7 +163,7 @@ impl AuthBackend {
         client_id: PathBuf,
         global_fs: &mut impl Filestore,
         rng: &mut R,
-    ) -> Result<Key, Error> {
+    ) -> Result<ChachaKey, Error> {
         Ok(match &self.hw_key {
             HardwareKey::Extracted(okm) => Self::expand(okm, &client_id),
             HardwareKey::Missing => return Err(Error::MissingHwKey),
@@ -183,7 +184,7 @@ impl AuthBackend {
         global_fs: &mut impl Filestore,
         ctx: &mut AuthContext,
         rng: &mut R,
-    ) -> Result<Key, Error> {
+    ) -> Result<ChachaKey, Error> {
         if let Some(app_key) = ctx.application_key {
             return Ok(app_key);
         }
@@ -197,7 +198,7 @@ impl AuthBackend {
 /// Per-client context for [`AuthBackend`][]
 #[derive(Default, Debug)]
 pub struct AuthContext {
-    application_key: Option<Key>,
+    application_key: Option<ChachaKey>,
 }
 
 impl Backend for AuthBackend {
@@ -249,8 +250,8 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                     let key_id = keystore.store_key(
                         Location::Volatile,
                         Secrecy::Secret,
-                        Kind::Symmetric(KEY_LEN),
-                        &*k,
+                        k.kind(),
+                        &k.data(),
                     )?;
                     Ok(reply::GetPinKey {
                         result: Some(key_id),
@@ -276,28 +277,34 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 Ok(reply::ChangePin { success }.into())
             }
             AuthRequest::SetPin(request) => {
-                let maybe_app_key = if request.derive_key {
-                    Some(self.get_app_key(client_id, global_fs, ctx, rng)?)
-                } else {
-                    None
+                let key_derivation = match request.derive_key {
+                    Some(key_type) => Some(DeriveKey {
+                        application_key: self.get_app_key(client_id, global_fs, ctx, rng)?,
+                        key_type,
+                    }),
+                    None => None,
                 };
                 PinData::new(
                     request.id,
                     &request.pin,
                     request.retries,
                     rng,
-                    maybe_app_key.as_ref(),
+                    key_derivation,
                 )
                 .save(fs, self.location)?;
                 Ok(reply::SetPin.into())
             }
             AuthRequest::SetPinWithKey(request) => {
                 let app_key = self.get_app_key(client_id, global_fs, ctx, rng)?;
-                let key_to_wrap =
-                    keystore.load_key(Secrecy::Secret, Some(Kind::Symmetric(32)), &request.key)?;
-                let key_to_wrap = (&*key_to_wrap.material)
+                let key_material = keystore.load_key(Secrecy::Secret, None, &request.key)?;
+                let material_32: [u8; 32] = (&*key_material.material)
                     .try_into()
                     .map_err(|_| Error::ReadFailed)?;
+                let key_to_wrap = match key_material.kind {
+                    Kind::Symmetric(32) => DecryptedKey::Chacha20Poly1305(material_32.into()),
+                    Kind::X255 => DecryptedKey::X25519(SecretKey::from_seed(&material_32)),
+                    _ => return Err(Error::NotFound)?,
+                };
                 PinData::reset_with_key(
                     request.id,
                     &request.pin,
@@ -347,7 +354,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 let key_id = keystore.store_key(
                     Location::Volatile,
                     Secrecy::Secret,
-                    Kind::Symmetric(KEY_LEN),
+                    Kind::Symmetric(CHACHA_KEY_LEN),
                     &*key,
                 )?;
                 Ok(reply::GetApplicationKey { key: key_id }.into())

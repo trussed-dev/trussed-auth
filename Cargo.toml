@@ -15,6 +15,7 @@ chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["
 hkdf = "0.12.3"
 hmac = "0.12.1"
 rand_core = "0.6.4"
+salty = { version = "0.3.0", default-features = false }
 serde = { version = "1", default-features = false }
 serde-byte-array = "0.1.2"
 sha2 = { version = "0.10.6", default-features = false }
@@ -24,7 +25,9 @@ trussed = { version = "0.1.0", features = ["serde-extensions"] }
 [dev-dependencies]
 quickcheck = { version = "1.0.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
+serde_test = "1.0.176"
 trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
+serde_cbor = { version = "0.11.2", features = ["std"] }
 
 [patch.crates-io]
 littlefs2 = { git =  "https://github.com/Nitrokey/littlefs2", tag = "v0.3.2-nitrokey-2" }
