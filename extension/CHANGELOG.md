@@ -13,13 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.3.0...HEAD
 
+### Breaking Changes
+
+- Extract `AuthBackend` into `trussed-auth-backend` crate
+
 ## [0.3.0][] - 2024-03-22
 
 [0.3.0]: https://github.com/trussed-dev/trussed-auth/releases/tag/v0.3.0
 
 ### Breaking Changes
 
-- Remove the `dat` intermediary directory in file storage ([#39][])
 - Add `delete_app_keys` and `delete_auth_keys` syscalls. ([#33][])
 
   - `delete_all_pins` now doesn't affect application keys
@@ -37,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#35]: https://github.com/trussed-dev/trussed-auth/pull/35
 [#36]: https://github.com/trussed-dev/trussed-auth/pull/36
 [#37]: https://github.com/trussed-dev/trussed-auth/pull/37
-[#39]: https://github.com/trussed-dev/trussed-auth/pull/39
 
 ## [0.2.2][] - 2023-04-26
 

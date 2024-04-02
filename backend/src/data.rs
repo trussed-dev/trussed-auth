@@ -17,7 +17,7 @@ use trussed::{
 };
 
 use super::Error;
-use crate::{Pin, PinId, MAX_PIN_LENGTH};
+use trussed_auth::{Pin, PinId, MAX_PIN_LENGTH};
 
 pub(crate) const SIZE: usize = 256;
 pub(crate) const CHACHA_TAG_LEN: usize = 16;
