@@ -35,7 +35,7 @@ fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
 ///
 /// ```rust
 ///# use littlefs2_core::{DynFilesystem, Error, path};
-///# use trussed_auth::migrate::migrate_remove_dat;
+///# use trussed_auth_backend::migrate::migrate_remove_dat;
 ///# fn test(fs: &dyn DynFilesystem) -> Result<(), Error> {
 /// migrate_remove_dat(fs, &[path!("secrets"), path!("opcard")])?;
 ///#     Ok(())

@@ -11,7 +11,8 @@ mod dispatch {
         service::ServiceResources,
         types::{Bytes, Context, Location},
     };
-    use trussed_auth::{AuthBackend, AuthContext, AuthExtension, MAX_HW_KEY_LEN};
+    use trussed_auth::AuthExtension;
+    use trussed_auth_backend::{AuthBackend, AuthContext, MAX_HW_KEY_LEN};
 
     pub const BACKENDS: &[BackendId<Backend>] =
         &[BackendId::Custom(Backend::Auth), BackendId::Core];
@@ -55,7 +56,10 @@ mod dispatch {
     impl Dispatch {
         pub fn new() -> Self {
             Self {
-                auth: AuthBackend::new(Location::Internal, trussed_auth::FilesystemLayout::V0),
+                auth: AuthBackend::new(
+                    Location::Internal,
+                    trussed_auth_backend::FilesystemLayout::V0,
+                ),
             }
         }
 
@@ -64,7 +68,7 @@ mod dispatch {
                 auth: AuthBackend::with_hw_key(
                     Location::Internal,
                     hw_key,
-                    trussed_auth::FilesystemLayout::V0,
+                    trussed_auth_backend::FilesystemLayout::V0,
                 ),
             }
         }
@@ -72,7 +76,7 @@ mod dispatch {
             Self {
                 auth: AuthBackend::with_missing_hw_key(
                     Location::Internal,
-                    trussed_auth::FilesystemLayout::V0,
+                    trussed_auth_backend::FilesystemLayout::V0,
                 ),
             }
         }
@@ -136,7 +140,8 @@ use trussed::{
     types::{Bytes, Location, Message, PathBuf},
     virt::{self, Ram},
 };
-use trussed_auth::{AuthClient as _, PinId, MAX_HW_KEY_LEN};
+use trussed_auth::{AuthClient as _, PinId};
+use trussed_auth_backend::MAX_HW_KEY_LEN;
 
 use dispatch::{Backend, Dispatch, BACKENDS};
 

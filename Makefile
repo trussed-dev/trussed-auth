@@ -3,18 +3,18 @@
 
 .PHONY: check
 check:
-	RUSTLFAGS='-Dwarnings' cargo check --all-features --all-targets
+	RUSTLFAGS='-Dwarnings' cargo check --all-features --all-targets --workspace
 
 .PHONY: lint
 lint:
-	cargo clippy --all-features --all-targets -- --deny warnings
-	cargo fmt -- --check
-	RUSTDOCFLAGS='-Dwarnings' cargo doc --no-deps
+	cargo clippy --all-features --all-targets --workspace -- --deny warnings
+	cargo fmt --all -- --check
+	RUSTDOCFLAGS='-Dwarnings' cargo doc --no-deps --workspace
 	reuse lint
 
 .PHONY: test
 test:
-	cargo test --all-features
+	cargo test --all-features --workspace
 
 .PHONY: ci
 ci: check lint test

@@ -1,7 +1,27 @@
 // Copyright (C) Nitrokey GmbH
 // SPDX-License-Identifier: Apache-2.0 or MIT
 
+#![no_std]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    non_ascii_idents,
+    trivial_casts,
+    unused,
+    unused_qualifications,
+    clippy::expect_used,
+    clippy::unwrap_used
+)]
+#![deny(unsafe_code)]
+
+//! A Trussed backend implementing the [`AuthExtension`][].
+//!
+//! [`AuthBackend`][] is an implementation of the [`AuthExtension`][] that stores PINs in the
+//! filesystem.
+
 mod data;
+
+pub mod migrate;
 
 use core::fmt;
 
@@ -20,15 +40,11 @@ use trussed::{
     types::{CoreContext, Location},
     Bytes,
 };
+use trussed_auth::{reply, AuthExtension, AuthReply, AuthRequest};
 
-use crate::{
-    backend::data::{expand_app_key, get_app_salt},
-    extension::{reply, AuthExtension, AuthReply, AuthRequest},
-    BACKEND_DIR,
-};
-use data::{Key, PinData, Salt, KEY_LEN, SALT_LEN};
+use data::{delete_app_salt, expand_app_key, get_app_salt, Key, PinData, Salt, KEY_LEN, SALT_LEN};
 
-use self::data::delete_app_salt;
+const BACKEND_DIR: &Path = path!("backend-auth");
 
 /// max accepted length for the hardware initial key material
 pub const MAX_HW_KEY_LEN: usize = 64;
@@ -116,7 +132,7 @@ impl AuthBackend {
     /// Creates a new `AuthBackend` with a missing hw key
     ///
     /// Contrary to [`new`](Self::new) which uses a default `&[]` key, this will make operations depending on the hardware key to fail:
-    /// - [`set_pin`](crate::AuthClient::set_pin) with `derive_key = true`
+    /// - [`set_pin`](trussed_auth::AuthClient::set_pin) with `derive_key = true`
     /// - All operations on a pin that was created with `derive_key = true`
     pub fn with_missing_hw_key(location: Location, layout: FilesystemLayout) -> Self {
         Self {
@@ -412,7 +428,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum Error {
+enum Error {
     NotFound,
     MissingHwKey,
     ReadFailed,

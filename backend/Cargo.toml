@@ -1,0 +1,35 @@
+# Copyright (C) Nitrokey GmbH
+# SPDX-License-Identifier: CC0-1.0
+
+[package]
+name = "trussed-auth-backend"
+version = "0.1.0"
+description = "Authentication backend for Trussed"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+trussed-core.workspace = true
+
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["reduced-round"] }
+hkdf = "0.12.3"
+hmac = "0.12.1"
+littlefs2-core = "0.1"
+rand_core = "0.6.4"
+serde-byte-array = "0.1.2"
+sha2 = { version = "0.10.6", default-features = false }
+subtle = { version = "2.4.1", default-features = false }
+trussed = { version = "0.1.0", default-features = false, features = ["serde-extensions"] }
+trussed-auth = { version = "0.3.0" }
+
+[dev-dependencies]
+admin-app = { version = "0.1.0", features = ["migration-tests"] }
+hex-literal = "0.4.1"
+quickcheck = { version = "1.0.3", default-features = false }
+rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
+serde_cbor = { version = "0.11.2", features = ["std"] }
+serde_test = "1.0.176"
+trussed = { version = "0.1.0", default-features = false, features = ["clients-1", "crypto-client", "filesystem-client", "hmac-sha256", "serde-extensions", "virt"] }

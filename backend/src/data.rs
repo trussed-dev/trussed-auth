@@ -18,7 +18,7 @@ use trussed::{
 };
 
 use super::Error;
-use crate::{Pin, PinId, MAX_PIN_LENGTH};
+use trussed_auth::{Pin, PinId, MAX_PIN_LENGTH};
 
 const APP_SALT_PATH: &Path = path!("application_salt");
 

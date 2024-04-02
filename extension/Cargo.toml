@@ -1,0 +1,18 @@
+# Copyright (C) Nitrokey GmbH
+# SPDX-License-Identifier: CC0-1.0
+
+[package]
+name = "trussed-auth"
+version = "0.3.0"
+description = "Authentication extension for Trussed"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+trussed-core.workspace = true
+
+[dev-dependencies]
+heapless-bytes = "0.3"

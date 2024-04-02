@@ -1,38 +1,22 @@
 # Copyright (C) Nitrokey GmbH
 # SPDX-License-Identifier: CC0-1.0
 
-[package]
-name = "trussed-auth"
-version = "0.3.0"
+[workspace]
+members = ["backend", "extension"]
+resolver = "2"
+
+[workspace.package]
 authors = ["Nitrokey GmbH <info@nitrokey.com>"]
 edition = "2021"
-repository = "https://github.com/trussed-dev/trussed-auth"
 license = "Apache-2.0 OR MIT"
-description = "Authentication extension and backend for Trussed"
+repository = "https://github.com/trussed-dev/trussed-auth"
 
-[dependencies]
-chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["reduced-round"] }
-hkdf = "0.12.3"
-hmac = "0.12.1"
-rand_core = "0.6.4"
+[workspace.dependencies]
 serde = { version = "1", default-features = false }
-serde-byte-array = "0.1.2"
-sha2 = { version = "0.10.6", default-features = false }
-subtle = { version = "2.4.1", default-features = false }
-trussed = { version = "0.1.0", default-features = false, features = ["serde-extensions"] }
 trussed-core = { version = "0.1.0-rc.1", features = ["serde-extensions"] }
-littlefs2-core = "0.1.0"
-
-[dev-dependencies]
-quickcheck = { version = "1.0.3", default-features = false }
-rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
-serde_test = "1.0.176"
-trussed = { version = "0.1.0", default-features = false, features = ["clients-1", "crypto-client", "filesystem-client", "hmac-sha256", "serde-extensions", "virt"] }
-admin-app = { version = "0.1.0", features = ["migration-tests"] }
-serde_cbor = { version = "0.11.2", features = ["std"] }
-hex-literal = "0.4.1"
 
 [patch.crates-io]
+trussed-auth = { path = "extension" }
+
 trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "6bba8fde36d05c0227769eb63345744e87d84b2b" }
-trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", rev = "9355f700831c1a278c334f76382fbf98d82aedcd" }
-admin-app = { git = "https://github.com/Nitrokey/admin-app.git", branch = "ctaphid-app" }
+admin-app = { git = "https://github.com/Nitrokey/admin-app.git", tag = "v0.1.0-nitrokey.19" }
