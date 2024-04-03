@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased][]
 
+- Use serde(rename) to save space on on the size of stored credentials ([#38][])
+
+[#38]: https://github.com/trussed-dev/trussed-auth/pull/38
+
 [Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.3.0...HEAD
 
 ## [0.3.0][] - 2024-03-22
