@@ -6,6 +6,10 @@ mod data;
 use core::fmt;
 
 use hkdf::Hkdf;
+use littlefs2::{
+    path,
+    path::{Path, PathBuf},
+};
 use rand_core::{CryptoRng, RngCore};
 use sha2::Sha256;
 use trussed::{
@@ -14,9 +18,9 @@ use trussed::{
     key::{Kind, Secrecy},
     platform::Platform,
     serde_extensions::ExtensionImpl,
-    service::{Keystore, ServiceResources},
-    store::filestore::Filestore,
-    types::{CoreContext, Location, PathBuf},
+    service::{ClientFilestore, Keystore, ServiceResources},
+    store::{filestore::Filestore, Store},
+    types::{CoreContext, Location},
     Bytes,
 };
 
@@ -211,6 +215,31 @@ impl AuthBackend {
     }
 }
 
+impl AuthBackend {
+    /// Returns whether a client is active (has auth data such as PINs)
+    pub fn is_client_active(
+        layout: FilesystemLayout,
+        location: Location,
+        client: &Path,
+        store: impl Store,
+    ) -> Result<bool> {
+        let backend_path = client.join(BACKEND_DIR);
+        let mut fs;
+        match layout {
+            FilesystemLayout::V0 => {
+                fs = ClientFilestore::new(backend_path, store);
+            }
+            FilesystemLayout::V1 => {
+                fs = ClientFilestore::new_raw(backend_path, store);
+            }
+        }
+
+        Ok(fs
+            .read_dir_first(path!(""), location, &trussed::api::NotBefore::None)?
+            .is_some())
+    }
+}
+
 /// Per-client context for [`AuthBackend`][]
 #[derive(Default, Debug)]
 pub struct AuthContext {
@@ -230,8 +259,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
         resources: &mut ServiceResources<P>,
     ) -> Result<AuthReply> {
         // FIXME: Have a real implementation from trussed
-        let mut backend_path = core_ctx.path.clone();
-        backend_path.push(&PathBuf::from(BACKEND_DIR));
+        let backend_path = core_ctx.path.join(BACKEND_DIR);
         let mut fs;
         let mut global_fs;
         match self.layout {

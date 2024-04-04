@@ -67,11 +67,12 @@ pub mod migrate;
 
 use core::str::FromStr;
 
-use serde::{Deserialize, Serialize};
-use trussed::{
-    config::MAX_SHORT_DATA_LENGTH,
-    types::{Bytes, PathBuf},
+use littlefs2::{
+    path,
+    path::{Path, PathBuf},
 };
+use serde::{Deserialize, Serialize};
+use trussed::{config::MAX_SHORT_DATA_LENGTH, types::Bytes};
 
 pub use backend::{AuthBackend, AuthContext, FilesystemLayout, MAX_HW_KEY_LEN};
 pub use extension::{
@@ -84,7 +85,7 @@ pub const MAX_PIN_LENGTH: usize = MAX_SHORT_DATA_LENGTH;
 /// A PIN.
 pub type Pin = Bytes<MAX_PIN_LENGTH>;
 
-const BACKEND_DIR: &str = "backend-auth";
+const BACKEND_DIR: &Path = path!("backend-auth");
 
 /// The ID of a PIN within the namespace of a client.
 ///
