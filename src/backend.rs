@@ -14,10 +14,9 @@ use trussed::{
     key::{Kind, Secrecy},
     platform::Platform,
     serde_extensions::ExtensionImpl,
-    service::{Keystore, ServiceResources},
-    store::filestore::Filestore,
-    types::{CoreContext, Location, PathBuf},
-    Bytes,
+    service::ServiceResources,
+    store::{filestore::Filestore, keystore::Keystore},
+    types::{Bytes, CoreContext, Location, PathBuf},
 };
 
 use crate::{
