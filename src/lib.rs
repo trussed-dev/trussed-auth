@@ -129,7 +129,7 @@ impl PinId {
         path[0..4].copy_from_slice(b"pin.");
         path[4..].copy_from_slice(&self.hex());
 
-        PathBuf::from(&path)
+        PathBuf::try_from(&path).unwrap()
     }
 
     /// Get the hex representation of the PIN id
@@ -182,7 +182,7 @@ mod tests {
         for i in 0..=u8::MAX {
             assert_eq!(Ok(PinId(i)), PinId::from_path(PinId(i).path().as_ref()));
             let actual = PinId(i).path();
-            let expected = PathBuf::from(format!("pin.{i:02x}").as_str());
+            let expected = PathBuf::try_from(format!("pin.{i:02x}").as_str()).unwrap();
             println!("id: {i}, actual: {actual}, expected: {expected}");
             assert_eq!(actual, expected);
         }

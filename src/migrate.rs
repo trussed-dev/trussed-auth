@@ -22,7 +22,7 @@ fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
     });
     match dir_res {
         Ok(()) => fs.remove_dir(&path_dat),
-        Err(Error::NoSuchEntry) => Ok(()),
+        Err(Error::NO_SUCH_ENTRY) => Ok(()),
         Err(_) => dir_res,
     }
 }

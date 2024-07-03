@@ -134,11 +134,11 @@ impl AuthBackend {
         global_fs: &mut impl Filestore,
         rng: &mut R,
     ) -> Result<Salt, Error> {
-        let path = PathBuf::from("salt");
+        let path = path!("salt");
         global_fs
             .read(&path, self.location)
             .or_else(|_| {
-                if global_fs.exists(&path, self.location) {
+                if global_fs.exists(path, self.location) {
                     return Err(Error::ReadFailed);
                 }
 
@@ -146,7 +146,7 @@ impl AuthBackend {
                 salt.resize_to_capacity();
                 rng.fill_bytes(&mut salt);
                 global_fs
-                    .write(&path, self.location, &salt)
+                    .write(path, self.location, &salt)
                     .or(Err(Error::WriteFailed))
                     .and(Ok(salt))
             })

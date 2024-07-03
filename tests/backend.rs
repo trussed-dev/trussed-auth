@@ -126,13 +126,14 @@ mod dispatch {
     }
 }
 
+use littlefs2::path;
 use rand_core::{OsRng, RngCore as _};
 use trussed::{
     backend::BackendId,
     client::{ClientImplementation, FilesystemClient, HmacSha256},
     service::Service,
     syscall, try_syscall,
-    types::{Bytes, Location, Message, PathBuf},
+    types::{Bytes, Location, Message},
     virt::{self, Ram},
 };
 use trussed_auth::{AuthClient as _, PinId, MAX_HW_KEY_LEN};
@@ -652,7 +653,7 @@ fn delete_all_pins() {
         let reply = syscall!(client.has_pin(Pin::Admin));
         assert!(reply.has_pin);
         assert!(try_syscall!(
-            client.read_file(Location::Internal, PathBuf::from("/backend-auth/pin.00"))
+            client.read_file(Location::Internal, path!("/backend-auth/pin.00").into())
         )
         .is_err());
 
@@ -741,7 +742,7 @@ fn reset_auth_data() {
         let reply = syscall!(client.has_pin(Pin::Admin));
         assert!(reply.has_pin);
         assert!(try_syscall!(
-            client.read_file(Location::Internal, PathBuf::from("/backend-auth/pin.00"))
+            client.read_file(Location::Internal, path!("/backend-auth/pin.00").into())
         )
         .is_err());
 
