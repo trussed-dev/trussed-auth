@@ -129,7 +129,7 @@ impl PinId {
         path[0..4].copy_from_slice(b"pin.");
         path[4..].copy_from_slice(&self.hex());
 
-        PathBuf::from(&path)
+        PathBuf::try_from(&path).unwrap()
     }
 
     /// Get the hex representation of the PIN id
