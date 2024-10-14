@@ -7,7 +7,7 @@
 
 use core::iter::once;
 
-use littlefs2::{io::Error, object_safe::DynFilesystem, path, path::Path};
+use littlefs2_core::{path, DynFilesystem, Error, Path};
 
 fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
     let path = path.join(path!("backend-auth"));
@@ -22,7 +22,7 @@ fn migrate_single(fs: &dyn DynFilesystem, path: &Path) -> Result<(), Error> {
     });
     match dir_res {
         Ok(()) => fs.remove_dir(&path_dat),
-        Err(Error::NoSuchEntry) => Ok(()),
+        Err(Error::NO_SUCH_ENTRY) => Ok(()),
         Err(_) => dir_res,
     }
 }

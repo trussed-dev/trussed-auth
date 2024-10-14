@@ -5,7 +5,7 @@ use core::ops::Deref;
 
 use chacha20poly1305::ChaCha8Poly1305;
 use hmac::{Hmac, Mac};
-use littlefs2::path;
+use littlefs2_core::path;
 use serde::{Deserialize, Serialize};
 use serde_byte_array::ByteArray;
 use sha2::{Digest as _, Sha256};
