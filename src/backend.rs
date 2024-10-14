@@ -134,11 +134,11 @@ impl AuthBackend {
         global_fs: &mut impl Filestore,
         rng: &mut R,
     ) -> Result<Salt, Error> {
-        let path = PathBuf::from("salt");
+        let path = path!("salt");
         global_fs
-            .read(&path, self.location)
+            .read(path, self.location)
             .or_else(|_| {
-                if global_fs.exists(&path, self.location) {
+                if global_fs.exists(path, self.location) {
                     return Err(Error::ReadFailed);
                 }
 
@@ -146,7 +146,7 @@ impl AuthBackend {
                 salt.resize_to_capacity();
                 rng.fill_bytes(&mut salt);
                 global_fs
-                    .write(&path, self.location, &salt)
+                    .write(path, self.location, &salt)
                     .or(Err(Error::WriteFailed))
                     .and(Ok(salt))
             })
@@ -170,7 +170,7 @@ impl AuthBackend {
         }
     }
 
-    fn expand(kdf: &Hkdf<Sha256>, client_id: &PathBuf) -> Key {
+    fn expand(kdf: &Hkdf<Sha256>, client_id: &Path) -> Key {
         let mut out = Key::default();
         #[allow(clippy::expect_used)]
         kdf.expand(client_id.as_ref().as_bytes(), &mut *out)
@@ -180,27 +180,27 @@ impl AuthBackend {
 
     fn generate_app_key<R: CryptoRng + RngCore>(
         &mut self,
-        client_id: PathBuf,
+        client_id: &Path,
         global_fs: &mut impl Filestore,
         rng: &mut R,
     ) -> Result<Key, Error> {
         Ok(match &self.hw_key {
-            HardwareKey::Extracted(okm) => Self::expand(okm, &client_id),
+            HardwareKey::Extracted(okm) => Self::expand(okm, client_id),
             HardwareKey::Missing => return Err(Error::MissingHwKey),
             HardwareKey::Raw(hw_k) => {
                 let kdf = self.extract(global_fs, Some(hw_k.clone()), rng)?;
-                Self::expand(kdf, &client_id)
+                Self::expand(kdf, client_id)
             }
             HardwareKey::None => {
                 let kdf = self.extract(global_fs, None, rng)?;
-                Self::expand(kdf, &client_id)
+                Self::expand(kdf, client_id)
             }
         })
     }
 
     fn get_app_key<R: CryptoRng + RngCore>(
         &mut self,
-        client_id: PathBuf,
+        client_id: &Path,
         global_fs: &mut impl Filestore,
         ctx: &mut AuthContext,
         rng: &mut R,
@@ -277,7 +277,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
         let global_fs = &mut global_fs;
 
         let rng = &mut resources.rng()?;
-        let client_id = core_ctx.path.clone();
+        let client_id = &core_ctx.path.clone();
         let keystore = &mut resources.keystore(core_ctx.path.clone())?;
         match request {
             AuthRequest::HasPin(request) => {
@@ -297,8 +297,7 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 Ok(reply::CheckPin { success }.into())
             }
             AuthRequest::GetPinKey(request) => {
-                let application_key =
-                    self.get_app_key(core_ctx.path.clone(), global_fs, ctx, rng)?;
+                let application_key = self.get_app_key(client_id, global_fs, ctx, rng)?;
                 let verification = PinData::load(fs, self.location, request.id)?.write(
                     fs,
                     self.location,
