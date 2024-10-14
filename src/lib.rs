@@ -67,10 +67,7 @@ pub mod migrate;
 
 use core::str::FromStr;
 
-use littlefs2::{
-    path,
-    path::{Path, PathBuf},
-};
+use littlefs2_core::{path, Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use trussed::{config::MAX_SHORT_DATA_LENGTH, types::Bytes};
 
@@ -129,7 +126,9 @@ impl PinId {
         path[0..4].copy_from_slice(b"pin.");
         path[4..].copy_from_slice(&self.hex());
 
-        PathBuf::from(&path)
+        // path has only ASCII characters and is not too long
+        #[allow(clippy::unwrap_used)]
+        PathBuf::try_from(&path).ok().unwrap()
     }
 
     /// Get the hex representation of the PIN id
@@ -182,7 +181,8 @@ mod tests {
         for i in 0..=u8::MAX {
             assert_eq!(Ok(PinId(i)), PinId::from_path(PinId(i).path().as_ref()));
             let actual = PinId(i).path();
-            let expected = PathBuf::from(format!("pin.{i:02x}").as_str());
+            #[allow(clippy::unwrap_used)]
+            let expected = PathBuf::try_from(format!("pin.{i:02x}").as_str()).unwrap();
             println!("id: {i}, actual: {actual}, expected: {expected}");
             assert_eq!(actual, expected);
         }

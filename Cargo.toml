@@ -20,7 +20,7 @@ serde-byte-array = "0.1.2"
 sha2 = { version = "0.10.6", default-features = false }
 subtle = { version = "2.4.1", default-features = false }
 trussed = { version = "0.1.0", features = ["serde-extensions"] }
-littlefs2 = "0.4.0"
+littlefs2-core = "0.1.0"
 
 [dev-dependencies]
 quickcheck = { version = "1.0.3", default-features = false }
@@ -32,10 +32,8 @@ serde_cbor = { version = "0.11.2", features = ["std"] }
 hex-literal = "0.4.1"
 
 [patch.crates-io]
-littlefs2 = { git = "https://github.com/sosthene-nitrokey/littlefs2.git", rev = "2b45a7559ff44260c6dd693e4cb61f54ae5efc53" }
-trussed = { git = "https://github.com/Nitrokey/trussed.git", tag = "v0.1.0-nitrokey.19" }
+trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "046478b7a4f6e2315acf9112d98308379c2e3eee" }
 trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", tag = "manage-v0.1.0" }
-apdu-dispatch = { git = "https://github.com/trussed-dev/apdu-dispatch.git", rev = "915fc237103fcecc29d0f0b73391f19abf6576de" }
 ctaphid-dispatch = { git = "https://github.com/trussed-dev/ctaphid-dispatch.git", rev = "57cb3317878a8593847595319aa03ef17c29ec5b" }
-admin-app = { git = "https://github.com/Nitrokey/admin-app.git", tag = "v0.1.0-nitrokey.12" }
+admin-app = { git = "https://github.com/Nitrokey/admin-app.git", tag = "v0.1.0-nitrokey.18" }
 cbor-smol = { git = "https://github.com/Nitrokey/cbor-smol.git", tag = "v0.4.0-nitrokey.2" }
