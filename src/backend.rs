@@ -6,10 +6,7 @@ mod data;
 use core::fmt;
 
 use hkdf::Hkdf;
-use littlefs2::{
-    path,
-    path::{Path, PathBuf},
-};
+use littlefs2_core::{path, Path, PathBuf};
 use rand_core::{CryptoRng, RngCore};
 use sha2::Sha256;
 use trussed::{

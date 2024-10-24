@@ -126,6 +126,7 @@ mod dispatch {
     }
 }
 
+use littlefs2_core::path;
 use rand_core::{OsRng, RngCore as _};
 use trussed::{
     backend::BackendId,
@@ -651,9 +652,10 @@ fn delete_all_pins() {
         assert!(reply.has_pin);
         let reply = syscall!(client.has_pin(Pin::Admin));
         assert!(reply.has_pin);
-        assert!(try_syscall!(
-            client.read_file(Location::Internal, PathBuf::from("/backend-auth/pin.00"))
-        )
+        assert!(try_syscall!(client.read_file(
+            Location::Internal,
+            PathBuf::from(path!("/backend-auth/pin.00"))
+        ))
         .is_err());
 
         syscall!(client.reset_app_keys());
@@ -740,9 +742,10 @@ fn reset_auth_data() {
         assert!(reply.has_pin);
         let reply = syscall!(client.has_pin(Pin::Admin));
         assert!(reply.has_pin);
-        assert!(try_syscall!(
-            client.read_file(Location::Internal, PathBuf::from("/backend-auth/pin.00"))
-        )
+        assert!(try_syscall!(client.read_file(
+            Location::Internal,
+            PathBuf::from(path!("/backend-auth/pin.00"))
+        ))
         .is_err());
 
         syscall!(client.reset_auth_data());
