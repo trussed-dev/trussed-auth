@@ -37,5 +37,5 @@ littlefs2-core = { git = "https://github.com/trussed-dev/littlefs2.git", branch 
 trussed = { git = "https://github.com/trussed-dev/trussed.git", branch = "littlefs2" }
 trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", tag = "manage-v0.1.0" }
 ctaphid-dispatch = { git = "https://github.com/trussed-dev/ctaphid-dispatch.git", rev = "57cb3317878a8593847595319aa03ef17c29ec5b" }
-admin-app = { git = "https://github.com/Nitrokey/admin-app.git", branch = "littlefs2-core" }
+admin-app = { git = "https://github.com/Nitrokey/admin-app.git", branch = "littlefs2" }
 cbor-smol = { git = "https://github.com/Nitrokey/cbor-smol.git", tag = "v0.4.0-nitrokey.2" }
