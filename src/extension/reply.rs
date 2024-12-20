@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 or MIT
 
 use serde::{Deserialize, Serialize};
-use trussed::{
-    error::{Error, Result},
-    types::KeyId,
-};
+use trussed_core::{types::KeyId, Error, Result};
 
 use super::AuthReply;
 

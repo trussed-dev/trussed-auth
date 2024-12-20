@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 or MIT
 
 use serde::{Deserialize, Serialize};
-use trussed::types::{KeyId, Message};
+use trussed_core::types::{KeyId, Message};
 
 use super::AuthRequest;
 use crate::{Pin, PinId};

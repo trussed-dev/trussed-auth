@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Use serde(rename) to save space on on the size of stored credentials ([#38][])
 - Remove the `dat` intermediary directory in file storage ([#39][])
+- Use `trussed-core` and remove default features for `trussed`
 
 [#38]: https://github.com/trussed-dev/trussed-auth/pull/38
 [#39]: https://github.com/trussed-dev/trussed-auth/pull/39

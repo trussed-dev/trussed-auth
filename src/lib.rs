@@ -26,7 +26,7 @@
 //! # Examples
 //!
 //! ```
-//! use trussed::{Bytes, syscall};
+//! use trussed_core::{types::Bytes, syscall};
 //! use trussed_auth::{AuthClient, PinId};
 //!
 //! #[repr(u8)]
@@ -69,7 +69,7 @@ use core::str::FromStr;
 
 use littlefs2_core::{path, Path, PathBuf};
 use serde::{Deserialize, Serialize};
-use trussed::{config::MAX_SHORT_DATA_LENGTH, types::Bytes};
+use trussed_core::{config::MAX_SHORT_DATA_LENGTH, types::Bytes};
 
 pub use backend::{AuthBackend, AuthContext, FilesystemLayout, MAX_HW_KEY_LEN};
 pub use extension::{
@@ -174,7 +174,7 @@ impl FromStr for PinId {
 #[cfg(test)]
 mod tests {
     use super::PinId;
-    use trussed::types::PathBuf;
+    use trussed_core::types::PathBuf;
 
     #[test]
     fn pin_id_path() {

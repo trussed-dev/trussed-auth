@@ -19,21 +19,20 @@ serde = { version = "1", default-features = false }
 serde-byte-array = "0.1.2"
 sha2 = { version = "0.10.6", default-features = false }
 subtle = { version = "2.4.1", default-features = false }
-trussed = { version = "0.1.0", features = ["serde-extensions"] }
+trussed = { version = "0.1.0", default-features = false, features = ["serde-extensions"] }
+trussed-core = { version = "0.1.0-rc.1", features = ["serde-extensions"] }
 littlefs2-core = "0.1.0"
 
 [dev-dependencies]
 quickcheck = { version = "1.0.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
 serde_test = "1.0.176"
-trussed = { version = "0.1.0", features = ["serde-extensions", "virt"] }
+trussed = { version = "0.1.0", default-features = false, features = ["clients-1", "crypto-client", "filesystem-client", "hmac-sha256", "serde-extensions", "virt"] }
 admin-app = { version = "0.1.0", features = ["migration-tests"] }
 serde_cbor = { version = "0.11.2", features = ["std"] }
 hex-literal = "0.4.1"
 
 [patch.crates-io]
-trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "046478b7a4f6e2315acf9112d98308379c2e3eee" }
-trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", tag = "manage-v0.1.0" }
-ctaphid-dispatch = { git = "https://github.com/trussed-dev/ctaphid-dispatch.git", rev = "57cb3317878a8593847595319aa03ef17c29ec5b" }
-admin-app = { git = "https://github.com/Nitrokey/admin-app.git", tag = "v0.1.0-nitrokey.18" }
-cbor-smol = { git = "https://github.com/Nitrokey/cbor-smol.git", tag = "v0.4.0-nitrokey.2" }
+trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "6bba8fde36d05c0227769eb63345744e87d84b2b" }
+trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", rev = "9355f700831c1a278c334f76382fbf98d82aedcd" }
+admin-app = { git = "https://github.com/Nitrokey/admin-app.git", branch = "ctaphid-app" }
