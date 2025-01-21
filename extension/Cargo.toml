@@ -3,7 +3,7 @@
 
 [package]
 name = "trussed-auth"
-version = "0.3.0"
+version = "0.4.0"
 description = "Authentication extension for Trussed"
 authors.workspace = true
 edition.workspace = true

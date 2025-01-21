@@ -11,7 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.4.0...HEAD
+
+-
+
+## [0.4.0][] - 2025-01-22
+
+[0.4.0]: https://github.com/trussed-dev/trussed-auth/releases/tag/v0.4.0
 
 ### Breaking Changes
 
