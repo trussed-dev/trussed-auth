@@ -32,4 +32,4 @@ quickcheck = { version = "1.0.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = ["getrandom"] }
 serde_cbor = { version = "0.11.2", features = ["std"] }
 serde_test = "1.0.176"
-trussed = { version = "0.1.0", default-features = false, features = ["clients-1", "crypto-client", "filesystem-client", "hmac-sha256", "serde-extensions", "virt"] }
+trussed = { version = "0.1.0", default-features = false, features = ["crypto-client", "filesystem-client", "hmac-sha256", "serde-extensions", "virt"] }

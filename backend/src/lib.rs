@@ -366,7 +366,9 @@ impl ExtensionImpl<AuthExtension> for AuthBackend {
                 let app_key = self.get_app_key(client_id, global_fs, ctx, rng)?;
                 let key_to_wrap =
                     keystore.load_key(Secrecy::Secret, Some(Kind::Symmetric(32)), &request.key)?;
-                let key_to_wrap = (&*key_to_wrap.material)
+                let key_to_wrap = key_to_wrap
+                    .material
+                    .as_slice()
                     .try_into()
                     .map_err(|_| Error::ReadFailed)?;
                 PinData::reset_with_key(

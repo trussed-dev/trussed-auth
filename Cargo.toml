@@ -18,5 +18,6 @@ trussed-core = { version = "0.1.0-rc.1", features = ["serde-extensions"] }
 [patch.crates-io]
 trussed-auth = { path = "extension" }
 
-trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "6bba8fde36d05c0227769eb63345744e87d84b2b" }
-admin-app = { git = "https://github.com/Nitrokey/admin-app.git", tag = "v0.1.0-nitrokey.19" }
+# trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "6bba8fde36d05c0227769eb63345744e87d84b2b" }
+trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "refs/pull/207/head" }
+admin-app = { git = "https://github.com/Nitrokey/admin-app.git", tag = "v0.1.0-nitrokey.20" }

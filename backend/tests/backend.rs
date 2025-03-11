@@ -134,19 +134,17 @@ use littlefs2_core::path;
 use rand_core::{OsRng, RngCore as _};
 use trussed::{
     backend::BackendId,
-    client::{ClientImplementation, FilesystemClient, HmacSha256},
-    service::Service,
+    client::{FilesystemClient, HmacSha256},
     syscall, try_syscall,
     types::{Bytes, Location, Message, PathBuf},
-    virt::{self, Ram},
+    virt::{self, StoreConfig},
 };
 use trussed_auth::{AuthClient as _, PinId};
 use trussed_auth_backend::MAX_HW_KEY_LEN;
 
 use dispatch::{Backend, Dispatch, BACKENDS};
 
-type Platform = virt::Platform<Ram>;
-type Client = ClientImplementation<Service<Platform, Dispatch>, Dispatch>;
+type Client<'a> = virt::Client<'a, Dispatch>;
 
 enum Pin {
     User,
@@ -170,20 +168,20 @@ impl From<Pin> for PinId {
     }
 }
 
-fn run<F: FnOnce(&mut Client)>(backends: &'static [BackendId<Backend>], f: F) {
-    virt::with_platform(Ram::default(), |platform| {
+fn run<F: FnOnce(&mut Client<'_>)>(backends: &'static [BackendId<Backend>], f: F) {
+    virt::with_platform(StoreConfig::ram(), |platform| {
         platform.run_client_with_backends("test", Dispatch::new(), backends, |mut client| {
             f(&mut client)
         })
     })
 }
 
-fn run_with_hw_key<F: FnOnce(&mut Client)>(
+fn run_with_hw_key<F: FnOnce(&mut Client<'_>)>(
     backends: &'static [BackendId<Backend>],
     hw_key: Bytes<{ MAX_HW_KEY_LEN }>,
     f: F,
 ) {
-    virt::with_platform(Ram::default(), |platform| {
+    virt::with_platform(StoreConfig::ram(), |platform| {
         platform.run_client_with_backends(
             "test",
             Dispatch::with_hw_key(hw_key),
@@ -193,8 +191,11 @@ fn run_with_hw_key<F: FnOnce(&mut Client)>(
     })
 }
 
-fn run_with_missing_hw_key<F: FnOnce(&mut Client)>(backends: &'static [BackendId<Backend>], f: F) {
-    virt::with_platform(Ram::default(), |platform| {
+fn run_with_missing_hw_key<F: FnOnce(&mut Client<'_>)>(
+    backends: &'static [BackendId<Backend>],
+    f: F,
+) {
+    virt::with_platform(StoreConfig::ram(), |platform| {
         platform.run_client_with_backends(
             "test",
             Dispatch::with_missing_hw_key(),
