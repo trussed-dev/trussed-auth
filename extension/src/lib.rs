@@ -47,7 +47,7 @@
 //!         // PIN is set but not provided
 //!         return false;
 //!     };
-//!     let Ok(pin) = Bytes::from_slice(pin) else {
+//!     let Ok(pin) = Bytes::try_from(pin) else {
 //!         // provided PIN is too long
 //!         return false;
 //!     };

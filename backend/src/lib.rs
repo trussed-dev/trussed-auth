@@ -163,7 +163,7 @@ impl AuthBackend {
                     .or(Err(Error::WriteFailed))
                     .and(Ok(salt))
             })
-            .and_then(|b| (**b).try_into().or(Err(Error::ReadFailed)))
+            .and_then(|b| (*b).try_into().or(Err(Error::ReadFailed)))
     }
 
     fn extract<R: CryptoRng + RngCore>(
@@ -172,7 +172,7 @@ impl AuthBackend {
         ikm: Option<Bytes<MAX_HW_KEY_LEN>>,
         rng: &mut R,
     ) -> Result<&Hkdf<Sha256>, Error> {
-        let ikm: &[u8] = ikm.as_deref().map(|i| &**i).unwrap_or(&[]);
+        let ikm: &[u8] = ikm.as_deref().map(|i| &*i).unwrap_or(&[]);
         let salt = self.get_global_salt(global_fs, rng)?;
         let kdf = Hkdf::new(Some(&*salt), ikm);
         self.hw_key = HardwareKey::Extracted(kdf);

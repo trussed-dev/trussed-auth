@@ -15,4 +15,4 @@ serde.workspace = true
 trussed-core.workspace = true
 
 [dev-dependencies]
-heapless-bytes = "0.3"
+heapless-bytes = "0.5"
