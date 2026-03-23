@@ -22,7 +22,7 @@ rand_core = "0.6.4"
 serde-byte-array = "0.1.2"
 sha2 = { version = "0.10.6", default-features = false }
 subtle = { version = "2.4.1", default-features = false }
-trussed = { version = "0.1.0", default-features = false, features = ["serde-extensions"] }
+trussed = { version = "0.1.0", default-features = false, features = ["crypto-client", "filesystem-client", "hmac-sha256", "serde-extensions"] }
 trussed-auth = "0.4"
 
 [dev-dependencies]

@@ -13,17 +13,11 @@ repository = "https://github.com/trussed-dev/trussed-auth"
 
 [workspace.dependencies]
 serde = { version = "1", default-features = false }
-trussed-core = { version = "0.1.0", features = ["serde-extensions"] }
+trussed-core = { version = "0.2", features = ["serde-extensions"] }
 
 [patch.crates-io]
 trussed-auth = { path = "extension" }
 
-trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "1e7b09a983dc8ae64a7ad8401ce541a9a77e5939" }
-trussed-core = { git = "https://github.com/trussed-dev/trussed.git", rev = "1e7b09a983dc8ae64a7ad8401ce541a9a77e5939" }
-admin-app = { git = "https://github.com/Nitrokey/admin-app.git", rev = "2b3f758016afbc56535d8a65f98a067d5a2d843e" }
-littlefs2 = { git = "https://github.com/trussed-dev/littlefs2.git", rev = "e9d3a1ca98f80e92cd20ee9b94707067810b9036" }
-littlefs2-core = { git = "https://github.com/trussed-dev/littlefs2.git", rev = "e9d3a1ca98f80e92cd20ee9b94707067810b9036" }
-littlefs2-sys = { git = "https://github.com/trussed-dev/littlefs2-sys", rev = "v0.3.1-nitrokey.1" }
-ctaphid-app = { git = "https://github.com/trussed-dev/ctaphid-dispatch.git", rev = "f11fdcbc62d06b8be23e6cbae21bcfefd52c0661" }
-apdu-app = { git = "https://github.com/trussed-dev/apdu-dispatch.git", rev = "931c4269d1d293954fae2012d809e9663cd2cb7e" }
-trussed-manage = { git = "https://github.com/trussed-dev/trussed-staging.git", rev = "eff09d1613641531630d962f81136f64f3dd2716" }
+trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "0b65280d69be541b8771f7756139826332c7d674" }
+admin-app = { git = "https://github.com/Nitrokey/admin-app.git", rev = "46f0c4fd9110b7ab68468c8070a5aa290e9654c7" }
+apdu-app = { git = "https://github.com/trussed-dev/apdu-dispatch.git", branch = "release" }

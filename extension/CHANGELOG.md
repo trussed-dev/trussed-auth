@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/trussed-dev/trussed-auth/compare/v0.4.0...HEAD
 
--
+- Update `trussed-core` to v0.2
 
 ## [0.4.0][] - 2025-01-22
 
