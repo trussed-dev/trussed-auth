@@ -5,17 +5,14 @@ use core::ops::Deref;
 
 use chacha20poly1305::ChaCha8Poly1305;
 use hmac::{Hmac, Mac};
-use littlefs2_core::path;
+use littlefs2_core::{path, Path};
+use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_byte_array::ByteArray;
 use sha2::{Digest as _, Sha256};
 use subtle::ConstantTimeEq as _;
-use trussed::{
-    platform::{CryptoRng, RngCore},
-    store::filestore::Filestore,
-    types::{Location, Path},
-    Bytes,
-};
+use trussed::store::Filestore;
+use trussed_core::types::{Bytes, Location};
 
 use super::Error;
 use trussed_auth::{Pin, PinId, MAX_PIN_LENGTH};
@@ -223,14 +220,14 @@ impl PinData {
             .read::<SIZE>(&path, location)
             .map_err(|_| Error::ReadFailed)?;
         let mut data: Self =
-            trussed::cbor_deserialize(&data).map_err(|_| Error::DeserializationFailed)?;
+            cbor_smol::cbor_deserialize(&data).map_err(|_| Error::DeserializationFailed)?;
         data.id = id;
         Ok(data)
     }
 
     pub fn save<S: Filestore>(&self, fs: &mut S, location: Location) -> Result<(), Error> {
-        let data = trussed::cbor_serialize_bytes::<_, SIZE>(self)
-            .map_err(|_| Error::SerializationFailed)?;
+        let mut data: Bytes<SIZE> = Bytes::new();
+        cbor_smol::cbor_serialize_to(self, &mut data).map_err(|_| Error::SerializationFailed)?;
         fs.write(&self.id.path(), location, &data)
             .map_err(|_| Error::WriteFailed)
     }
@@ -520,7 +517,7 @@ pub(crate) fn get_app_salt<S: Filestore, R: CryptoRng + RngCore>(
 pub(crate) fn delete_app_salt<S: Filestore>(
     fs: &mut S,
     location: Location,
-) -> Result<(), trussed::Error> {
+) -> Result<(), trussed_core::Error> {
     if fs.exists(APP_SALT_PATH, location) {
         fs.remove_file(APP_SALT_PATH, location)
     } else {
@@ -573,7 +570,8 @@ mod tests {
             salt: [u8::MAX; SALT_LEN].into(),
             data: KeyOrHash::Hash([u8::MAX; HASH_LEN].into()),
         };
-        let serialized = trussed::cbor_serialize_bytes::<_, 1024>(&data).unwrap();
+        let mut serialized: Bytes<1024> = Bytes::new();
+        cbor_smol::cbor_serialize_to(&data, &mut serialized).unwrap();
         assert!(serialized.len() <= SIZE);
     }
 
@@ -582,7 +580,8 @@ mod tests {
     fn test_salt_size() {
         // We allow one byte overhead for byte array serialization
         let salt = Salt::from([u8::MAX; SALT_LEN]);
-        let serialized = trussed::cbor_serialize_bytes::<_, 1024>(&salt).unwrap();
+        let mut serialized: Bytes<1024> = Bytes::new();
+        cbor_smol::cbor_serialize_to(&salt, &mut serialized).unwrap();
         assert!(serialized.len() <= SALT_LEN + 1, "{}", serialized.len());
     }
 

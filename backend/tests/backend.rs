@@ -3,16 +3,19 @@
 
 mod dispatch {
     use trussed::{
-        api::{reply, request, Reply, Request},
         backend::{Backend as _, BackendId},
-        error::Error,
         platform::Platform,
         serde_extensions::{ExtensionDispatch, ExtensionId, ExtensionImpl as _},
         service::ServiceResources,
-        types::{Bytes, Context, Location},
+        types::Context,
     };
     use trussed_auth::AuthExtension;
     use trussed_auth_backend::{AuthBackend, AuthContext, MAX_HW_KEY_LEN};
+    use trussed_core::{
+        api::{reply, request, Reply, Request},
+        types::{Bytes, Location},
+        Error,
+    };
 
     pub const BACKENDS: &[BackendId<Backend>] =
         &[BackendId::Custom(Backend::Auth), BackendId::Core];
@@ -134,13 +137,16 @@ use littlefs2_core::path;
 use rand_core::{OsRng, RngCore as _};
 use trussed::{
     backend::BackendId,
-    client::{FilesystemClient, HmacSha256},
-    syscall, try_syscall,
-    types::{Bytes, Location, Message, PathBuf},
     virt::{self, StoreConfig},
 };
 use trussed_auth::{AuthClient as _, PinId};
 use trussed_auth_backend::MAX_HW_KEY_LEN;
+use trussed_core::{
+    mechanisms::HmacSha256,
+    syscall, try_syscall,
+    types::{Bytes, Location, Message, PathBuf},
+    FilesystemClient,
+};
 
 use dispatch::{Backend, Dispatch, BACKENDS};
 

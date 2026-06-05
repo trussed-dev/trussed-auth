@@ -17,7 +17,3 @@ trussed-core = { version = "0.2", features = ["serde-extensions"] }
 
 [patch.crates-io]
 trussed-auth = { path = "extension" }
-
-trussed = { git = "https://github.com/trussed-dev/trussed.git", rev = "0b65280d69be541b8771f7756139826332c7d674" }
-admin-app = { git = "https://github.com/Nitrokey/admin-app.git", rev = "46f0c4fd9110b7ab68468c8070a5aa290e9654c7" }
-apdu-app = { git = "https://github.com/trussed-dev/apdu-dispatch.git", branch = "release" }

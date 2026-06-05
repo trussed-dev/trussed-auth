@@ -31,16 +31,18 @@ use rand_core::{CryptoRng, RngCore};
 use sha2::Sha256;
 use trussed::{
     backend::Backend,
-    error::Result,
     key::{Kind, Secrecy},
     platform::Platform,
     serde_extensions::ExtensionImpl,
-    service::{ClientFilestore, Keystore, ServiceResources},
-    store::{filestore::Filestore, Store},
-    types::{CoreContext, Location},
-    Bytes,
+    service::ServiceResources,
+    store::{ClientFilestore, Filestore, Keystore, Store},
+    types::CoreContext,
 };
 use trussed_auth::{reply, AuthExtension, AuthReply, AuthRequest};
+use trussed_core::{
+    types::{Bytes, Location},
+    Result,
+};
 
 use data::{delete_app_salt, expand_app_key, get_app_salt, Key, PinData, Salt, KEY_LEN, SALT_LEN};
 
@@ -248,7 +250,7 @@ impl AuthBackend {
         }
 
         Ok(fs
-            .read_dir_first(path!(""), location, &trussed::api::NotBefore::None)?
+            .read_dir_first(path!(""), location, &trussed_core::types::NotBefore::None)?
             .is_some())
     }
 }
@@ -440,7 +442,7 @@ enum Error {
     BadPinType,
 }
 
-impl From<Error> for trussed::error::Error {
+impl From<Error> for trussed_core::Error {
     fn from(error: Error) -> Self {
         match error {
             Error::NotFound => Self::NoSuchKey,
