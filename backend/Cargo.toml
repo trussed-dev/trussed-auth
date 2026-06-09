@@ -3,7 +3,7 @@
 
 [package]
 name = "trussed-auth-backend"
-version = "0.1.0"
+version = "0.2.0-rc.1"
 description = "Authentication backend for Trussed"
 authors.workspace = true
 edition.workspace = true
