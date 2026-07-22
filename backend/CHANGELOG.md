@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -
 
-## [0.2.0-rc.1][] - 2026-06-09
+## [0.2.0][] - 2026-07-22
 
-[0.2.0-rc.1]: https://github.com/trussed-dev/trussed-auth/releases/tag/backend-v0.2.0-rc.1
+[0.2.0]: https://github.com/trussed-dev/trussed-auth/releases/tag/backend-v0.2.0
 
 - Update to `trussed` v0.2.0
 
