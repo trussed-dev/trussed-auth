@@ -150,7 +150,7 @@ impl PinData {
         rng.fill_bytes(salt.as_mut());
         let data = application_key
             .map(|k| {
-                use chacha20poly1305::{AeadInPlace, KeyInit};
+                use chacha20poly1305::{AeadInOut, KeyInit};
                 let mut key = Key::default();
                 rng.fill_bytes(&mut *key);
                 let pin_key = derive_key(id, pin, &salt, k);
@@ -160,7 +160,7 @@ impl PinData {
                 let nonce = Default::default();
                 #[allow(clippy::expect_used)]
                 let tag: [u8; CHACHA_TAG_LEN] = aead
-                    .encrypt_in_place_detached(&nonce, &[u8::from(id)], &mut *key)
+                    .encrypt_inout_detached(&nonce, &[u8::from(id)], key.as_mut_slice().into())
                     .expect("Wrapping the key should always work, length are acceptable")
                     .into();
 
@@ -189,7 +189,7 @@ impl PinData {
     where
         R: CryptoRng + RngCore,
     {
-        use chacha20poly1305::{AeadInPlace, KeyInit};
+        use chacha20poly1305::{AeadInOut, KeyInit};
         let mut salt = Salt::default();
         rng.fill_bytes(salt.as_mut());
         let pin_key = derive_key(id, pin, &salt, application_key);
@@ -197,7 +197,7 @@ impl PinData {
         let nonce = Default::default();
         #[allow(clippy::expect_used)]
         let tag: [u8; CHACHA_TAG_LEN] = aead
-            .encrypt_in_place_detached(&nonce, &[u8::from(id)], &mut *key_to_wrap)
+            .encrypt_inout_detached(&nonce, &[u8::from(id)], key_to_wrap.as_mut_slice().into())
             .expect("Wrapping the key should always work, length are acceptable")
             .into();
         Self {
@@ -338,17 +338,17 @@ impl<'a> PinDataMut<'a> {
         mut wrapped_key: Key,
         tag: &ChaChaTag,
     ) -> Option<Key> {
-        use chacha20poly1305::{AeadInPlace, KeyInit};
+        use chacha20poly1305::{AeadInOut, KeyInit};
 
         let pin_key = derive_key(self.id, pin, &self.salt, application_key);
         let aead = ChaCha8Poly1305::new((&*pin_key).into());
         // The pin key is only ever used to once to wrap a key. Nonce reuse is not a concern
         // Because the salt is also used in the key derivation process, PIN reuse across PINs will still lead to different keys
         let nonce = Default::default();
-        aead.decrypt_in_place_detached(
+        aead.decrypt_inout_detached(
             &nonce,
             &[u8::from(self.data.id)],
-            &mut *wrapped_key,
+            wrapped_key.as_mut_slice().into(),
             (&**tag).into(),
         )
         .ok()
@@ -385,7 +385,7 @@ impl<'a> PinDataMut<'a> {
         application_key: &Key,
         rng: &mut R,
     ) {
-        use chacha20poly1305::{AeadInPlace, KeyInit};
+        use chacha20poly1305::{AeadInOut, KeyInit};
         let mut salt = Salt::default();
         rng.fill_bytes(&mut *salt);
 
@@ -398,7 +398,7 @@ impl<'a> PinDataMut<'a> {
 
         #[allow(clippy::expect_used)]
         let tag: [u8; CHACHA_TAG_LEN] = aead
-            .encrypt_in_place_detached(&nonce, &[u8::from(self.id)], &mut *old_key)
+            .encrypt_inout_detached(&nonce, &[u8::from(self.id)], old_key.as_mut_slice().into())
             .expect("Wrapping the key should always work, length are acceptable")
             .into();
 
